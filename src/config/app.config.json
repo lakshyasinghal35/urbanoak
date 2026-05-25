@@ -1,0 +1,30 @@
+{
+	"httpPort":9000,
+	"httpsPort":8090,
+	"sessionExpiry":300, 
+	"sessionSecret":"secretkey",
+	"https":{
+		"keyPath":"/usr/certificates/sharebooks/key/sharebooks.key",
+		"certPath":"/usr/certificates/sharebooks/primary/primary.crt",
+		"caPath":"/usr/certificates/sharebooks/intermed/intermed.crt"
+	},
+	"isHttps":0,
+	"isSessionRequired":0,
+	"staticResourcePaths":["public"],
+	"mySQL":{
+		"host":"127.0.0.1",
+		"port":3306,
+		"database_name":"urbanoak",
+		"user":"root",
+		"password":"root"
+	},
+	"mongoDB":{
+		"host":"127.0.0.1",
+		"port":27017,
+		"database_name":"urbanoak",
+		"user":"root",
+		"password":"root",
+		"auth_mechanism":"SCRAM-SHA-1",
+		"auth_source":"admin"
+	}
+}

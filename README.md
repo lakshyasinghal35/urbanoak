@@ -1,2 +1,132 @@
 # urbanoak
-E Commerce Furniture Store
+
+E-commerce furniture store API (Express, MySQL, MongoDB).
+
+## Prerequisites
+
+- **Node.js** 18+ (20 recommended)
+- **Docker Desktop** (or Docker Engine + Compose) for local MySQL and MongoDB
+
+## Run locally
+
+### 1. Start databases
+
+From the project root:
+
+```bash
+docker compose up -d
+```
+
+This starts:
+
+| Service | Host port | Credentials |
+|---------|-----------|-------------|
+| MySQL (Docker) | **3307** → container 3306 | user `root`, password `root`, database `urbanoak` |
+| MongoDB | 27017 | user `root`, password `root`, auth database `admin` |
+
+`app.config.json` uses MySQL on port **3306** by default (typical for a local MySQL install).
+
+**If port 3306 is already in use** (common on macOS with Homebrew or system MySQL), you already have MySQL locally. Start only MongoDB in Docker:
+
+```bash
+docker compose up -d mongodb
+```
+
+Then use your local MySQL for step 2 (port 3306). No Docker MySQL container needed.
+
+**If you want MySQL in Docker instead**, after `docker compose up -d`, set `"port": 3307` under `mySQL` in `src/config/app.config.json`.
+
+Check that containers are running:
+
+```bash
+docker compose ps
+```
+
+### 2. Initialize MySQL schema
+
+Create the database and tables on whichever MySQL you use (local **3306** or Docker **3307**).
+
+Local MySQL (default config):
+
+```bash
+mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS urbanoak;"
+mysql -h 127.0.0.1 -P 3306 -u root -proot urbanoak < scripts/db/schema.sql
+```
+
+Docker MySQL (`mySQL.port` set to `3307` in config):
+
+```bash
+mysql -h 127.0.0.1 -P 3307 -u root -proot -e "CREATE DATABASE IF NOT EXISTS urbanoak;"
+mysql -h 127.0.0.1 -P 3307 -u root -proot urbanoak < scripts/db/schema.sql
+```
+
+### 3. Install dependencies
+
+```bash
+npm install
+```
+
+### 4. Start the API server
+
+Development (auto-restart on file changes):
+
+```bash
+npm run dev
+```
+
+Production-style:
+
+```bash
+npm start
+```
+
+The server listens on **http://localhost:9000** (see `httpPort` in `src/config/app.config.json`).
+
+### 5. Verify
+
+Health check:
+
+```bash
+curl http://localhost:9000/
+```
+
+Example response:
+
+```json
+{"name":"urbanoak","status":"ok","api":"/api"}
+```
+
+API routes are mounted under **`/api`** (profile, product, and order microservices).
+
+## Configuration
+
+Database and server settings live in **`src/config/app.config.json`**. Update host, port, credentials, or `httpPort` there if your local setup differs from Docker defaults.
+
+Entry point: **`src/app.js`** (loads config, connects to databases, then starts the HTTP server).
+
+## Tests
+
+```bash
+npm test
+```
+
+## Run the Node app in Docker (optional)
+
+Databases should still be started with Compose first. The app image does not include MySQL or MongoDB:
+
+```bash
+docker compose up -d
+docker build -t urbanoak .
+docker run --rm -p 9000:9000 --network host urbanoak
+```
+
+On macOS/Windows, `--network host` may not work as on Linux; map ports explicitly and point `app.config.json` at the database host your container can reach (often `host.docker.internal`).
+
+## Troubleshooting
+
+| Issue | What to do |
+|-------|------------|
+| `Ports are not available` / `3306: bind: address already in use` | MySQL is already running locally. Use `docker compose up -d mongodb` and keep `mySQL.port` at `3306`, or use Docker MySQL on host port `3307` and set `"port": 3307` in `app.config.json`. |
+| `Unknown database 'urbanoak'` | Run the MySQL init commands in step 2. |
+| `ECONNREFUSED` on port 27017 | Start Docker Compose (`docker compose up -d mongodb` or full `up -d`). Order/cart features need MongoDB. |
+| `Cannot connect to the Docker daemon` | Start Docker Desktop, then retry `docker compose up -d`. |

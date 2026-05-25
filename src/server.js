@@ -2,17 +2,14 @@ const path = require("path");
 const https = require("https");
 const fs = require('fs');
 const express = require("express");
-const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-const session = require("express-session");
-const helmet = require("helmet");
 const { sendError } = require('./utils/response');
 
 const app = express();
 
 const routers = require("./routes/index");
-const enums = require(path.join(appRoot+"/models/enums/enums"));
-const STATUS_CODES = enums.ERROR_CODES; 
+const enums = require("./models/enums/enums");
+const STATUS_CODES = enums.ERROR_CODES;
 
 const noSessionUrls = [{url:"/",method:"GET"},{url:"/api/login",method:"POST"},{url:"/api/users",method:"PUT"}];
 
@@ -63,11 +60,11 @@ function listenOnHttp(app){
 }
 
 function configure(){
-	app.use(bodyParser.json());
-	app.use(bodyParser.urlencoded({extended:true}));
+	app.use(express.json());
+	app.use(express.urlencoded({ extended: true }));
 	app.use(cookieParser());
 	//needs to be modified and made robust
-	app.use(session({secret:config.sessionSecret,key:"",resave: true,saveUninitialized: false}));
+	//app.use(session({secret:config.sessionSecret,key:"",resave: true,saveUninitialized: false}));
 }
 
 
@@ -89,13 +86,9 @@ function addSessionValidator(){
 	app.use(function(req,res,next){
 		const url = req.originalUrl;
 		const method = req.method;
-		const session = req.session;
+		const session = req.session || {};
 		const isAjax = req.xhr;
 		const isSessionRequired = config.isSessionRequired;
-
-		console.log("Method =>",req.method);
-		console.log("Url =>",req.originalUrl);
-		console.log("isAjax =>",isAjax);
 		/*check if session exists by checking whether the user object is set in session
 		The user object will only be set if the user has looged in*/
 		if(isSessionRequired && !session.user){   //session doesn't exist
@@ -138,9 +131,9 @@ function isNoSessionUrl(url,method){
 /*get all static resource paths and add them with the path static
 all the static resources will be available from /static path. Example => http://localhost:8070/static/login.js */
 function addStaticResources(){
-	const paths = config.staticResourcePaths;
+	const paths = config.staticResourcePaths || [];
 	for(var i=0,l=paths.length;i<l;i++){
-		app.use('/static',express.static(paths[i]));
+		app.use('/static', express.static(path.join(appRoot, paths[i])));
 	}
 	//app.use('/',express.static("."));
 }

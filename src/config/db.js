@@ -1,27 +1,14 @@
 const mysql = require('mysql2/promise');
 const mongoose = require('mongoose');
+const config = require('./app.config.json');
 
-const {
-  SQL_DB_HOST = '127.0.0.1',
-  SQL_DB_USER = 'root',
-  SQL_DB_PASSWORD = 'root',
-  SQL_DB_NAME = 'urbanoak',
-  SQL_DB_PORT = 3306,
-  MONGO_DB_HOST = '127.0.0.1',
-  MONGO_DB_NAME = 'urbanoak',
-  MONGO_DB_PORT = 27017,
-  MONGO_DB_USER = 'root',
-  MONGO_DB_PASSWORD = 'root',
-  MONGO_DB_AUTH_MECHANISM = 'SCRAM-SHA-1',
-  MONGO_DB_AUTH_SOURCE = 'admin',
-} = process.env;
 
 const pool = mysql.createPool({
-  host: SQL_DB_HOST,
-  user: SQL_DB_USER,
-  password: SQL_DB_PASSWORD,
-  database: SQL_DB_NAME,
-  port: Number(SQL_DB_PORT),
+  host: config.mySQL.host,
+  user: config.mySQL.user,
+  password: config.mySQL.password,
+  database: config.mySQL.database_name,
+  port: Number(config.mySQL.port),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -38,10 +25,22 @@ pool.on('error', (error) => {
 
 
 //create mongoose db connection and status logs
-const MONGO_DB_URI = `mongodb://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@${MONGO_DB_HOST}:${MONGO_DB_PORT}/${MONGO_DB_NAME}?authSource=${MONGO_DB_AUTH_SOURCE}&authMechanism=${MONGO_DB_AUTH_MECHANISM}`;
+const MONGO_DB_URI =
+  'mongodb://' +
+  config.mongoDB.user + ':' +
+  config.mongoDB.password + '@' +
+  config.mongoDB.host + ':' +
+  config.mongoDB.port + '/' +
+  config.mongoDB.database_name +
+  '?authSource=' + config.mongoDB.auth_source +
+  '&authMechanism=' + config.mongoDB.auth_mechanism;
+
 mongoose.connect(MONGO_DB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+}).catch((error) => {
+  console.error('MongoDB connection failed (server will keep running):', error.message);
 });
 
 mongoose.connection.on('error', (error) => {
