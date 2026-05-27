@@ -1,5 +1,53 @@
 const repository = require('./repository');
 const ApiError = require('../../utils/apiError');
+const cache = require('../../utils/cache');
+
+const CACHE_PREFIX = 'catalog:v1';
+const CACHE_TTL_SECONDS = {
+  CATALOG: 1800,
+  PRODUCT: 300,
+};
+
+function buildCacheKey(...parts) {
+  return `${CACHE_PREFIX}:${parts.join(':')}`;
+}
+
+function normalizeName(name) {
+  return String(name).trim().toLowerCase();
+}
+
+function normalizeCategoryIds(categoryIds) {
+  return [...categoryIds]
+    .map(Number)
+    .filter(id => !Number.isNaN(id))
+    .sort((a, b) => a - b);
+}
+
+async function invalidateCatalogCaches({
+  categoryId,
+  spaceId,
+  sectionId,
+  sectionSpaceId,
+  productId,
+} = {}) {
+  await cache.deleteKeys([
+    categoryId ? buildCacheKey('category', 'id', categoryId) : null,
+    spaceId ? buildCacheKey('space', 'id', spaceId) : null,
+    sectionId ? buildCacheKey('section', 'id', sectionId) : null,
+    sectionSpaceId ? buildCacheKey('sections', 'space', sectionSpaceId) : null,
+    productId ? buildCacheKey('product', 'id', productId) : null,
+    buildCacheKey('categories', 'all'),
+    buildCacheKey('spaces', 'all'),
+    buildCacheKey('sections', 'all'),
+  ]);
+
+  await cache.deleteByPrefix([
+    buildCacheKey('category', 'name'),
+    buildCacheKey('space', 'name'),
+    buildCacheKey('products', 'categories'),
+    buildCacheKey('products', 'page'),
+  ]);
+}
 
 //--------------------------------category--------------------------------
 
@@ -8,15 +56,22 @@ async function saveCategory(category) {
     throw ApiError.badRequest('Category name is required');
   }
 
+  let savedCategory = null;
   if (category.id) {
     const updated = await repository.saveCategory(category);
     if (!updated) {
       throw ApiError.notFound('Category not found');
     }
-    return updated;
+    savedCategory = updated;
+  } else {
+    savedCategory = await repository.createCategory(category);
   }
 
-  return repository.createCategory(category);
+  await invalidateCatalogCaches({
+    categoryId: savedCategory.id || category.id,
+  });
+
+  return savedCategory;
 }
 
 async function fetchCategory(id, name) {
@@ -24,11 +79,27 @@ async function fetchCategory(id, name) {
     throw ApiError.badRequest('Category id or name is required');
   }
 
-  return id ? repository.getCategoryById(id) : repository.getCategoryByName(name);
+  if (id) {
+    return cache.rememberJSON(
+      buildCacheKey('category', 'id', id),
+      CACHE_TTL_SECONDS.CATALOG,
+      () => repository.getCategoryById(id),
+    );
+  }
+
+  return cache.rememberJSON(
+    buildCacheKey('category', 'name', normalizeName(name)),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getCategoryByName(name),
+  );
 }
 
 async function fetchAllCategories() {
-  return repository.getAllCategories();
+  return cache.rememberJSON(
+    buildCacheKey('categories', 'all'),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getAllCategories(),
+  );
 }
 
 async function removeCategory(id) {
@@ -41,6 +112,7 @@ async function removeCategory(id) {
     throw ApiError.notFound('Category not found');
   }
 
+  await invalidateCatalogCaches({ categoryId: id });
   return true;
 }
 
@@ -51,7 +123,15 @@ async function saveSpace(space) {
     throw ApiError.badRequest('Space name is required');
   }
 
-  return space.id ? repository.saveSpace(space) : repository.createSpace(space);
+  const savedSpace = space.id
+    ? await repository.saveSpace(space)
+    : await repository.createSpace(space);
+
+  await invalidateCatalogCaches({
+    spaceId: savedSpace?.id || space.id,
+  });
+
+  return savedSpace;
 }
 
 async function fetchSpace(id, name) {
@@ -59,11 +139,27 @@ async function fetchSpace(id, name) {
     throw ApiError.badRequest('Space id or name is required');
   }
 
-  return id ? repository.getSpaceById(id) : repository.getSpaceByName(name);
+  if (id) {
+    return cache.rememberJSON(
+      buildCacheKey('space', 'id', id),
+      CACHE_TTL_SECONDS.CATALOG,
+      () => repository.getSpaceById(id),
+    );
+  }
+
+  return cache.rememberJSON(
+    buildCacheKey('space', 'name', normalizeName(name)),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getSpaceByName(name),
+  );
 }
 
 async function fetchAllSpaces() {
-  return repository.getAllSpaces();
+  return cache.rememberJSON(
+    buildCacheKey('spaces', 'all'),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getAllSpaces(),
+  );
 }
 
 async function removeSpace(id) {
@@ -76,6 +172,7 @@ async function removeSpace(id) {
     throw ApiError.notFound('Space not found');
   }
 
+  await invalidateCatalogCaches({ spaceId: id });
   return true;
 }
 
@@ -86,7 +183,16 @@ async function saveSection(section) {
     throw ApiError.badRequest('Section space_id and category_id are required');
   }
 
-  return section.id ? repository.saveSection(section) : repository.createSection(section);
+  const savedSection = section.id
+    ? await repository.saveSection(section)
+    : await repository.createSection(section);
+
+  await invalidateCatalogCaches({
+    sectionId: savedSection?.id || section.id,
+    sectionSpaceId: savedSection?.space_id || section.space_id,
+  });
+
+  return savedSection;
 }
 
 async function fetchSection(id, space_id) {
@@ -94,11 +200,27 @@ async function fetchSection(id, space_id) {
     throw ApiError.badRequest('Section id or space_id is required');
   }
 
-  return id ? repository.getSectionById(id) : repository.getSectionsBySpaceId(space_id);
+  if (id) {
+    return cache.rememberJSON(
+      buildCacheKey('section', 'id', id),
+      CACHE_TTL_SECONDS.CATALOG,
+      () => repository.getSectionById(id),
+    );
+  }
+
+  return cache.rememberJSON(
+    buildCacheKey('sections', 'space', space_id),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getSectionsBySpaceId(space_id),
+  );
 }
 
 async function fetchAllSections() {
-  return repository.getAllSections();
+  return cache.rememberJSON(
+    buildCacheKey('sections', 'all'),
+    CACHE_TTL_SECONDS.CATALOG,
+    () => repository.getAllSections(),
+  );
 }
 
 async function removeSection(id) {
@@ -111,6 +233,7 @@ async function removeSection(id) {
     throw ApiError.notFound('Section not found');
   }
 
+  await invalidateCatalogCaches({ sectionId: id });
   return true;
 }
 
@@ -122,23 +245,45 @@ async function saveProduct(product) {
     throw ApiError.badRequest('Missing required product fields: title, category_id, category, wood_type, mrp, details, units');
   }
 
-  return product.id ? repository.saveProduct(product) : repository.createProduct(product);
+  const savedProduct = product.id
+    ? await repository.saveProduct(product)
+    : await repository.createProduct(product);
+
+  await invalidateCatalogCaches({
+    productId: savedProduct?.id || product.id,
+    categoryId: savedProduct?.category_id || product.category_id,
+  });
+
+  return savedProduct;
 }
 
 async function fetchProducts({ id, categoryIds, page, limit } = {}) {
   if (id) {
-    return repository.getProductById(id);
+    return cache.rememberJSON(
+      buildCacheKey('product', 'id', id),
+      CACHE_TTL_SECONDS.PRODUCT,
+      () => repository.getProductById(id),
+    );
   }
 
   if (categoryIds?.length) {
-    return repository.getProductsByCategoryIds(categoryIds);
+    const normalizedCategoryIds = normalizeCategoryIds(categoryIds);
+    return cache.rememberJSON(
+      buildCacheKey('products', 'categories', normalizedCategoryIds.join(',')),
+      CACHE_TTL_SECONDS.PRODUCT,
+      () => repository.getProductsByCategoryIds(normalizedCategoryIds),
+    );
   }
 
   if (page !== undefined || limit !== undefined) {
     const pageNum = Number(page) > 0 ? Number(page) : 1;
     const limitNum = Number(limit) > 0 ? Number(limit) : 20;
     const offset = (pageNum - 1) * limitNum;
-    return repository.getProducts({ offset, limit: limitNum });
+    return cache.rememberJSON(
+      buildCacheKey('products', 'page', pageNum, 'limit', limitNum),
+      CACHE_TTL_SECONDS.PRODUCT,
+      () => repository.getProducts({ offset, limit: limitNum }),
+    );
   }
 
   throw ApiError.badRequest('Product id or category_ids is required');
@@ -154,6 +299,7 @@ async function removeProduct(id) {
     throw ApiError.notFound('Product not found');
   }
 
+  await invalidateCatalogCaches({ productId: id });
   return true;
 }
 
