@@ -1,7 +1,6 @@
 // MySQL queries for categories, spaces, and sections; MongoDB for products
 
 const { mongoose } = require('../../config/db');
-const { Schema } = mongoose;
 
 //--------------------------------category--------------------------------
 
@@ -47,8 +46,13 @@ const createSpaceQuery = `
   VALUES (?, ?);
 `;
 
+function spaceCoverImage(space) {
+  const value = space.cover_image ?? space.coverImage;
+  return value == null ? null : value;
+}
+
 function spaceParams(space) {
-  return [space.name, space.cover_image];
+  return [space.name, spaceCoverImage(space)];
 }
 
 const saveSpaceQuery = `
@@ -58,7 +62,7 @@ const saveSpaceQuery = `
 `;
 
 function saveSpaceParams(space) {
-  return [space.name, space.cover_image, space.id];
+  return [space.name, spaceCoverImage(space), space.id];
 }
 
 const deleteSpaceQuery = `
@@ -116,28 +120,6 @@ const getSectionsBySpaceIdQuery = `
 
 //--------------------------------product--------------------------------
 
-const COLLECTIONS = {
-  PRODUCTS: 'products',
-};
-
-const productSchema = new Schema(
-  {
-    title: { type: String, required: true },
-    category_id: { type: Number, required: true, index: true },
-    category: { type: String, required: true },
-    wood_type: { type: String, required: true },
-    dimensions: { type: String },
-    mrp: { type: Number, required: true },
-    discount: { type: Number },
-    images: { type: Schema.Types.Mixed },
-    details: { type: String, required: true },
-    units: { type: Number, required: true },
-  },
-  { collection: COLLECTIONS.PRODUCTS, timestamps: true }
-);
-
-const ProductModel = mongoose.models.Product || mongoose.model('Product', productSchema);
-
 function productDocument(product) {
   return {
     title: product.title,
@@ -163,8 +145,9 @@ function toProduct(doc) {
   if (!doc) {
     return null;
   }
-
+  console.log(doc);
   const obj = doc.toObject();
+  console.log(obj);
   return {
     id: obj._id.toString(),
     title: obj.title,
@@ -209,8 +192,6 @@ module.exports = {
   getSectionsBySpaceIdQuery,
   sectionParams,
   saveSectionParams,
-  COLLECTIONS,
-  ProductModel,
   productDocument,
   productsByCategoryIdsFilter,
   toProduct,

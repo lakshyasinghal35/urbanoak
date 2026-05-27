@@ -308,13 +308,21 @@ describe('productMicroservice/service', () => {
   });
 
   describe('fetchProducts', () => {
-    it('paginates with default page and limit when called with no args', async () => {
-      repository.getProducts.mockResolvedValue({ rows: [], total: 0 });
+    it('throws when no id, categoryIds, or pagination params', async () => {
+      await expect(productService.fetchProducts()).rejects.toMatchObject({ statusCode: 400 });
 
-      await productService.fetchProducts();
-
-      expect(repository.getProducts).toHaveBeenCalledWith({ offset: 0, limit: 20 });
+      expect(repository.getProducts).not.toHaveBeenCalled();
       expect(repository.getProductById).not.toHaveBeenCalled();
+      expect(repository.getProductsByCategoryIds).not.toHaveBeenCalled();
+    });
+
+    it('fetches by id when id is provided', async () => {
+      repository.getProductById.mockResolvedValue({ id: '507f1f77bcf86cd799439011' });
+
+      await productService.fetchProducts({ id: '507f1f77bcf86cd799439011' });
+
+      expect(repository.getProductById).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+      expect(repository.getProducts).not.toHaveBeenCalled();
       expect(repository.getProductsByCategoryIds).not.toHaveBeenCalled();
     });
 
@@ -332,15 +340,6 @@ describe('productMicroservice/service', () => {
       await productService.fetchProducts({ page: -1, limit: 0 });
 
       expect(repository.getProducts).toHaveBeenCalledWith({ offset: 0, limit: 20 });
-    });
-
-    it('paginates even when id is provided (default page/limit always apply)', async () => {
-      repository.getProducts.mockResolvedValue([]);
-
-      await productService.fetchProducts({ id: 1 });
-
-      expect(repository.getProducts).toHaveBeenCalled();
-      expect(repository.getProductById).not.toHaveBeenCalled();
     });
   });
 

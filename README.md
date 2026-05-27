@@ -98,6 +98,10 @@ Example response:
 
 API routes are mounted under **`/api`** (profile, product, and order microservices).
 
+### Postman
+
+Import the collection and local environment from **`postman/`** (see [postman/README.md](postman/README.md)).
+
 ## Configuration
 
 Database and server settings live in **`src/config/app.config.json`**. Update host, port, credentials, or `httpPort` there if your local setup differs from Docker defaults.

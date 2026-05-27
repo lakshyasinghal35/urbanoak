@@ -47,8 +47,16 @@ mongoose.connection.on('error', (error) => {
   console.error('Error connecting to MongoDB:', error);
 });
 
-mongoose.connection.on('connected', () => {
+mongoose.connection.on('connected', async () => {
   console.log('Connected to MongoDB');
+
+  try {
+    const { ensureMongoIndexes } = require('../models/mongoSchemas');
+    await ensureMongoIndexes();
+    console.log('MongoDB indexes synced');
+  } catch (error) {
+    console.error('MongoDB index sync failed:', error.message);
+  }
 });
 
 mongoose.connection.on('disconnected', () => {

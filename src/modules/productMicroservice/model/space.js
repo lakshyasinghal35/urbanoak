@@ -6,10 +6,10 @@
 
 
 class Space {
-  constructor({ id, name } = {}) {
+  constructor({ id, name, cover_image, coverImage } = {}) {
     this.id = id;
     this.name = name;
-    this.cover_image = cover_image;
+    this.coverImage = (coverImage == undefined && cover_image == undefined) ? null : (coverImage ?? cover_image);
   }
 }
 

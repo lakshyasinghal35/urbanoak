@@ -2,11 +2,12 @@ const { pool } = require('../../config/db');
 const Order = require('./model/order');
 const { Cart, CartItem } = require('./model/cart');
 const queries = require('./query');
+const { OrderModel } = require('../../models/mongoSchemas');
 
 //--------------------------------order--------------------------------
 
 async function createOrder(order) {
-  const doc = await queries.OrderModel.create(queries.orderDocument(order));
+  const doc = await OrderModel.create(queries.orderDocument(order));
   return new Order(queries.toOrder(doc));
 }
 
@@ -15,7 +16,7 @@ async function saveOrder(order) {
     return null;
   }
 
-  const doc = await queries.OrderModel.findByIdAndUpdate(
+  const doc = await OrderModel.findByIdAndUpdate(
     order.id,
     queries.orderDocument(order),
     { new: true }
@@ -33,7 +34,7 @@ async function deleteOrder(id) {
     return false;
   }
 
-  const doc = await queries.OrderModel.findByIdAndDelete(id);
+  const doc = await OrderModel.findByIdAndDelete(id);
   return doc != null;
 }
 
@@ -42,7 +43,7 @@ async function getOrderById(id) {
     return null;
   }
 
-  const doc = await queries.OrderModel.findById(id);
+  const doc = await OrderModel.findById(id);
   if (!doc) {
     return null;
   }
@@ -51,7 +52,7 @@ async function getOrderById(id) {
 }
 
 async function getOrdersByUserId(user_id) {
-  const docs = await queries.OrderModel.find(queries.ordersByUserIdFilter(user_id));
+  const docs = await OrderModel.find(queries.ordersByUserIdFilter(user_id));
   if (!docs || docs.length === 0) {
     return null;
   }

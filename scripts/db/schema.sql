@@ -35,7 +35,8 @@ CREATE TABLE categories (
 
 CREATE TABLE spaces (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL
+    name VARCHAR(50) UNIQUE NOT NULL,
+    cover_image VARCHAR(255)
 );
 
 CREATE TABLE sections (

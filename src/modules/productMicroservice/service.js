@@ -117,19 +117,23 @@ async function saveProduct(product) {
   return product.id ? repository.saveProduct(product) : repository.createProduct(product);
 }
 
-async function fetchProducts({ id, categoryIds, page = 1, limit = 20 } = {}) {
-  if ((page !== undefined && limit !== undefined) || (page !== undefined && !id && !categoryIds)) {
+async function fetchProducts({ id, categoryIds, page, limit } = {}) {
+  if (id) {
+    return repository.getProductById(id);
+  }
+
+  if (categoryIds?.length) {
+    return repository.getProductsByCategoryIds(categoryIds);
+  }
+
+  if (page !== undefined || limit !== undefined) {
     const pageNum = Number(page) > 0 ? Number(page) : 1;
     const limitNum = Number(limit) > 0 ? Number(limit) : 20;
     const offset = (pageNum - 1) * limitNum;
     return repository.getProducts({ offset, limit: limitNum });
   }
 
-  if (!id && !categoryIds) {
-    throw ApiError.badRequest('Product id or category_ids is required');
-  }
-
-  return id ? repository.getProductById(id) : repository.getProductsByCategoryIds(categoryIds);
+  throw ApiError.badRequest('Product id or category_ids is required');
 }
 
 async function removeProduct(id) {

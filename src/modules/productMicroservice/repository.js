@@ -4,6 +4,8 @@ const Category = require('./model/category');
 const Space = require('./model/space');
 const Section = require('./model/section');
 const queries = require('./query');
+const ApiError = require('../../utils/apiError');
+const { ProductModel, isDuplicateKeyError } = require('../../models/mongoSchemas');
 
 //--------------------------------category--------------------------------
 
@@ -99,7 +101,6 @@ async function getSpaceById(id) {
   if (!rows || rows.length === 0) {
     return null;
   }
-
   return new Space(rows[0]);
 }
 
@@ -182,8 +183,15 @@ async function getSectionsBySpaceId(space_id) {
 //--------------------------------product--------------------------------
 
 async function createProduct(product) {
-  const doc = await queries.ProductModel.create(queries.productDocument(product));
-  return new Product(queries.toProduct(doc));
+  try {
+    const doc = await ProductModel.create(queries.productDocument(product));
+    return new Product(queries.toProduct(doc));
+  } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      throw ApiError.conflict('Product with this title already exists');
+    }
+    throw err;
+  }
 }
 
 async function saveProduct(product) {
@@ -191,17 +199,24 @@ async function saveProduct(product) {
     return null;
   }
 
-  const doc = await queries.ProductModel.findByIdAndUpdate(
-    product.id,
-    queries.productDocument(product),
-    { new: true }
-  );
+  try {
+    const doc = await ProductModel.findByIdAndUpdate(
+      product.id,
+      queries.productDocument(product),
+      { new: true, runValidators: true }
+    );
 
-  if (!doc) {
-    return null;
+    if (!doc) {
+      return null;
+    }
+
+    return new Product(queries.toProduct(doc));
+  } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      throw ApiError.conflict('Product with this title already exists');
+    }
+    throw err;
   }
-
-  return new Product(queries.toProduct(doc));
 }
 
 async function deleteProduct(id) {
@@ -209,7 +224,7 @@ async function deleteProduct(id) {
     return false;
   }
 
-  const doc = await queries.ProductModel.findByIdAndDelete(id);
+  const doc = await ProductModel.findByIdAndDelete(id);
   return doc != null;
 }
 
@@ -218,7 +233,7 @@ async function getProductById(id) {
     return null;
   }
 
-  const doc = await queries.ProductModel.findById(id);
+  const doc = await ProductModel.findById(id);
   if (!doc) {
     return null;
   }
@@ -227,7 +242,7 @@ async function getProductById(id) {
 }
 
 async function getProducts({ offset = 0, limit = 20 } = {}) {
-  const docs = await queries.ProductModel.find()
+  const docs = await ProductModel.find()
     .skip(offset)
     .limit(limit);
 
@@ -239,7 +254,7 @@ async function getProductsByCategoryIds(categoryIds) {
     return [];
   }
 
-  const docs = await queries.ProductModel.find(
+  const docs = await ProductModel.find(
     queries.productsByCategoryIdsFilter(categoryIds)
   );
 

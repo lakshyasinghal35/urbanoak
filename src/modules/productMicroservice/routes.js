@@ -18,6 +18,7 @@ function parseCategoryIds(value) {
 //--------------------------------space routes--------------------------------
 
 router.post('/spaces', asyncHandler(async (req, res) => {
+  console.log(req.body);
   const data = await service.saveSpace(req.body);
   sendSuccess(res, data, 201);
 }));
@@ -123,7 +124,10 @@ router.get('/products', asyncHandler(async (req, res) => {
 
 router.get('/products/list', asyncHandler(async (req, res) => {
   const { page, limit } = req.query;
-  const data = await service.fetchProducts({ page, limit });
+  const data = await service.fetchProducts({
+    page: page ?? 1,
+    limit: limit ?? 20,
+  });
   sendSuccess(res, data);
 }));
 
