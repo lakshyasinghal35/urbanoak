@@ -36,7 +36,8 @@ const getCategoryByNameQuery = `
 `;
 
 const getAllCategoriesQuery = `
-  SELECT * FROM categories;
+  SELECT * FROM categories
+  ORDER BY id ASC;
 `;
 
 //--------------------------------space--------------------------------
