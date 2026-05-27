@@ -127,7 +127,7 @@ async function saveAddress(address) {
 
 async function fetchAddressesByUserId(user_id) {
   const addresses = await userRepository.getAddressesByUserId(user_id);
-  return addresses.map(sanitizeAddress);
+  return (addresses || []).map(sanitizeAddress);
 }
 
 

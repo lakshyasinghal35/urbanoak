@@ -23,7 +23,8 @@ CREATE TABLE addresses (
     city VARCHAR(50) NOT NULL,
     state VARCHAR(50) NOT NULL,
     country VARCHAR(50) NOT NULL,
-    pincode VARCHAR(20) NOT NULL
+    pincode VARCHAR(20) NOT NULL,
+    UNIQUE KEY userid_houseno_area_city (user_id, house_no, area, city)
 );
 
 
@@ -42,7 +43,9 @@ CREATE TABLE spaces (
 CREATE TABLE sections (
     id INT AUTO_INCREMENT PRIMARY KEY,
     space_id INT NOT NULL,
-    category_id INT NOT NULL
+    category_id INT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
 

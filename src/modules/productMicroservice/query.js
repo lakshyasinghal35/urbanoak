@@ -145,9 +145,7 @@ function toProduct(doc) {
   if (!doc) {
     return null;
   }
-  console.log(doc);
   const obj = doc.toObject();
-  console.log(obj);
   return {
     id: obj._id.toString(),
     title: obj.title,

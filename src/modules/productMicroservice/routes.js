@@ -18,7 +18,6 @@ function parseCategoryIds(value) {
 //--------------------------------space routes--------------------------------
 
 router.post('/spaces', asyncHandler(async (req, res) => {
-  console.log(req.body);
   const data = await service.saveSpace(req.body);
   sendSuccess(res, data, 201);
 }));

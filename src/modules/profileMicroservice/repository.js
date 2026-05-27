@@ -56,7 +56,7 @@ async function createAddress(address) {
 
 //get address by user id
 async function getAddressesByUserId(user_id) {
-  const sql = queries.getAddressByUserIdQuery;
+  const sql = queries.getAddressesByUserIdQuery;
 
   const [rows] = await pool.execute(sql, [user_id]);
   if (!rows || rows.length === 0) {
