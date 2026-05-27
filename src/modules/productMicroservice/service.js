@@ -8,7 +8,15 @@ async function saveCategory(category) {
     throw ApiError.badRequest('Category name is required');
   }
 
-  return category.id ? repository.saveCategory(category) : repository.createCategory(category);
+  if (category.id) {
+    const updated = await repository.saveCategory(category);
+    if (!updated) {
+      throw ApiError.notFound('Category not found');
+    }
+    return updated;
+  }
+
+  return repository.createCategory(category);
 }
 
 async function fetchCategory(id, name) {

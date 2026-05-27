@@ -38,6 +38,15 @@ describe('productMicroservice/service', () => {
       expect(repository.createCategory).not.toHaveBeenCalled();
       expect(result).toBe(category);
     });
+
+    it('throws not found when update affects no rows', async () => {
+      repository.saveCategory.mockResolvedValue(null);
+
+      await expect(productService.saveCategory({ id: 999, name: 'Tables' })).rejects.toMatchObject({
+        message: 'Category not found',
+        statusCode: 404,
+      });
+    });
   });
 
   describe('fetchCategory', () => {

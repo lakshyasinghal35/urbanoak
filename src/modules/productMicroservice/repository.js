@@ -23,7 +23,11 @@ async function createCategory(category) {
 async function saveCategory(category) {
   const sql = queries.saveCategoryQuery;
 
-  await pool.execute(sql, queries.saveCategoryParams(category));
+  const [result] = await pool.execute(sql, queries.saveCategoryParams(category));
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
 
   return new Category(category);
 }
