@@ -36,11 +36,24 @@ function url(path, query = []) {
 }
 
 function request(name, method, path, opts = {}) {
+  const shouldUseJsonHeaders =
+    opts.json !== false &&
+    opts.formdata === undefined &&
+    ['POST', 'PUT', 'PATCH'].includes(method);
+
   const req = {
     method,
-    header: opts.json !== false && ['POST', 'PUT', 'PATCH'].includes(method) ? headersJson() : [],
+    header: shouldUseJsonHeaders ? headersJson() : [],
     url: typeof path === 'string' ? url(path, opts.query) : path,
   };
+
+  if (opts.formdata !== undefined) {
+    req.body = {
+      mode: 'formdata',
+      formdata: opts.formdata,
+    };
+  }
+
   if (opts.body !== undefined) {
     req.body = jsonBody(opts.body);
   }
@@ -147,6 +160,24 @@ const collection = {
         request('Delete section', 'DELETE', '/api/sections/1'),
       ]),
       folder('Products', null, [
+        request('Upload product image', 'POST', '/api/products/images/upload', {
+          json: false,
+          formdata: [
+            {
+              key: 'product_id',
+              type: 'text',
+              value: 'REPLACE_WITH_MONGO_PRODUCT_ID',
+              description: 'MongoDB product id',
+            },
+            {
+              key: 'image',
+              type: 'file',
+              src: '',
+              description: 'Pick an image file from your local machine',
+            },
+          ],
+          description: 'Uploads image to S3, appends URL into product.images, and returns updated images metadata.',
+        }),
         request('Create product', 'POST', '/api/products', {
           body: {
             title: 'Oak Study Desk',

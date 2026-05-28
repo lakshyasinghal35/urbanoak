@@ -40,3 +40,11 @@ npm run dev
 | `cartId` | Cart id after creating a cart |
 
 Replace `REPLACE_WITH_MONGO_PRODUCT_ID` in product/order bodies with a real product `_id` from `POST /api/products`.
+
+## Catalog image upload
+
+- Use `Product -> Products -> Upload product image`
+- Set `product_id` (MongoDB product id) as text form-data
+- Choose a local file in the `image` form-data field
+- Endpoint: `POST /api/products/images/upload`
+- Response includes `bucket`, `key`, `url`, and updated `images` array persisted on the product

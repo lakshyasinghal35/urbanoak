@@ -1,12 +1,24 @@
+const path = require('path');
+global.appRoot = path.join(__dirname, '../../../src');
+
 const repository = require('../../../src/modules/productMicroservice/repository');
 const ApiError = require('../../../src/common/apiError');
-const productService = require('../../../src/modules/productMicroservice/service');
+const cache = require('../../../src/common/cache');
 
 jest.mock('../../../src/modules/productMicroservice/repository');
+jest.mock('../../../src/common/s3Uploader', () => ({
+  uploadImageToS3: jest.fn(),
+}));
+
+const { uploadImageToS3 } = require('../../../src/common/s3Uploader');
+const productService = require('../../../src/modules/productMicroservice/service');
 
 describe('productMicroservice/service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(cache, 'save').mockImplementation(async (key, ttl, loader) => loader());
+    jest.spyOn(cache, 'deleteKeys').mockResolvedValue();
+    jest.spyOn(cache, 'deleteByPrefix').mockResolvedValue();
   });
 
   describe('saveCategory', () => {
@@ -370,6 +382,107 @@ describe('productMicroservice/service', () => {
       repository.deleteProduct.mockResolvedValue(true);
 
       expect(await productService.removeProduct(1)).toBe(true);
+    });
+  });
+
+  describe('uploadCatalogImage', () => {
+    const file = {
+      originalname: 'chair.png',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-image'),
+      size: 1234,
+    };
+    const productId = '507f1f77bcf86cd799439011';
+
+    it('throws bad request when file is missing', async () => {
+      await expect(productService.uploadCatalogImage()).rejects.toMatchObject({
+        message: 'Image file is required',
+        statusCode: 400,
+      });
+    });
+
+    it('throws bad request when product_id is missing', async () => {
+      await expect(productService.uploadCatalogImage(file)).rejects.toMatchObject({
+        message: 'product_id is required',
+        statusCode: 400,
+      });
+    });
+
+    it('throws bad request for unsupported mime type', async () => {
+      await expect(productService.uploadCatalogImage({
+        ...file,
+        mimetype: 'application/pdf',
+      }, productId)).rejects.toMatchObject({
+        message: 'Only jpeg, png, webp and gif images are supported',
+        statusCode: 400,
+      });
+    });
+
+    it('throws not found when product does not exist', async () => {
+      uploadImageToS3.mockResolvedValue({
+        bucket: 'catalog-images',
+        key: 'catalog/abc-chair.png',
+        url: 'https://catalog-images.s3.ap-south-1.amazonaws.com/catalog/abc-chair.png',
+      });
+      repository.getProductById.mockResolvedValue(null);
+
+      await expect(productService.uploadCatalogImage(file, productId)).rejects.toMatchObject({
+        message: 'Product not found',
+        statusCode: 404,
+      });
+    });
+
+    it('uploads image and returns metadata', async () => {
+      uploadImageToS3.mockResolvedValue({
+        bucket: 'catalog-images',
+        key: 'catalog/abc-chair.png',
+        url: 'https://catalog-images.s3.ap-south-1.amazonaws.com/catalog/abc-chair.png',
+      });
+      repository.getProductById.mockResolvedValue({
+        id: productId,
+        title: 'Chair',
+        category_id: 1,
+        category: 'Chairs',
+        wood_type: 'Oak',
+        mrp: 1000,
+        details: { color: 'Brown' },
+        units: 3,
+        images: ['https://existing.example/chair-old.png'],
+      });
+      repository.saveProduct.mockResolvedValue({
+        id: productId,
+      });
+
+      const result = await productService.uploadCatalogImage(file, productId);
+
+      expect(uploadImageToS3).toHaveBeenCalledWith({
+        buffer: file.buffer,
+        mimeType: file.mimetype,
+        originalName: file.originalname,
+      });
+      expect(repository.getProductById).toHaveBeenCalledWith(productId);
+      expect(repository.saveProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: productId,
+          images: [
+            'https://existing.example/chair-old.png',
+            'https://catalog-images.s3.ap-south-1.amazonaws.com/catalog/abc-chair.png',
+          ],
+        })
+      );
+      expect(result).toEqual({
+        product_id: productId,
+        file_name: 'chair.png',
+        content_type: 'image/png',
+        size: 1234,
+        bucket: 'catalog-images',
+        key: 'catalog/abc-chair.png',
+        url: 'https://catalog-images.s3.ap-south-1.amazonaws.com/catalog/abc-chair.png',
+        images: [
+          'https://existing.example/chair-old.png',
+          'https://catalog-images.s3.ap-south-1.amazonaws.com/catalog/abc-chair.png',
+        ],
+      });
     });
   });
 });
