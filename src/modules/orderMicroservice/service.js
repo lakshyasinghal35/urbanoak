@@ -1,5 +1,5 @@
 const repository = require('./repository');
-const ApiError = require('../../utils/apiError');
+const ApiError = require('../../common/apiError');
 
 //--------------------------------order--------------------------------
 

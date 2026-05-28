@@ -1,27 +1,8 @@
 // MongoDB query helpers for orders; MySQL queries for carts and cart items
 
 const { mongoose } = require('../../config/db');
-const { Schema } = mongoose;
-
-const COLLECTIONS = {
-  ORDERS: 'orders',
-};
 
 //--------------------------------order--------------------------------
-
-const orderSchema = new Schema(
-  {
-    user_id: { type: Number, required: true, index: true },
-    items: { type: Schema.Types.Mixed, required: true },
-    delivery_details: { type: Schema.Types.Mixed, required: true },
-    billing_details: { type: Schema.Types.Mixed, required: true },
-    total_amount: { type: Number, required: true },
-    status: { type: String },
-  },
-  { collection: COLLECTIONS.ORDERS, timestamps: true }
-);
-
-const OrderModel = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
 function orderDocument(order) {
   return {
@@ -140,8 +121,6 @@ function isValidId(id) {
 }
 
 module.exports = {
-  COLLECTIONS,
-  OrderModel,
   orderDocument,
   orderByIdFilter,
   ordersByUserIdFilter,

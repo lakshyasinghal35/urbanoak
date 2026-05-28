@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { sendSuccess } = require('../../utils/response');
-const asyncHandler = require('../../utils/asyncHandler');
+const { sendSuccess } = require('../../common/response');
+const asyncHandler = require('../../common/asyncHandler');
 const service = require('./service');
 
 //--------------------------------order routes--------------------------------

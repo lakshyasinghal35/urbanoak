@@ -98,8 +98,8 @@ Each microservice follows a standardized three-layer pattern in `/src/modules/`:
 ### Key Files to Know
 - **src/server.js**: Server initialization, session handling, security headers, middleware configuration order
 - **src/config/db.js**: Database connections (MySQL pool and Mongoose)
-- **src/utils/jwt.js**: JWT utilities
-- **src/utils/helpers.js**: Common helper functions
+- **src/common/jwt.js**: JWT utilities
+- **src/common/helpers.js**: Common helper functions
 - **package.json**: Dependencies and scripts
 
 ## Adding New Features

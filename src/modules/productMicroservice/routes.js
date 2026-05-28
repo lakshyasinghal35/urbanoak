@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { sendSuccess } = require('../../utils/response');
-const asyncHandler = require('../../utils/asyncHandler');
+const { sendSuccess } = require('../../common/response');
+const asyncHandler = require('../../common/asyncHandler');
 const service = require('./service');
 
 function parseCategoryIds(value) {
@@ -123,7 +123,10 @@ router.get('/products', asyncHandler(async (req, res) => {
 
 router.get('/products/list', asyncHandler(async (req, res) => {
   const { page, limit } = req.query;
-  const data = await service.fetchProducts({ page, limit });
+  const data = await service.fetchProducts({
+    page: page ?? 1,
+    limit: limit ?? 20,
+  });
   sendSuccess(res, data);
 }));
 
