@@ -11,7 +11,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: urbanoak
     volumes:
-      - mysql_data:/var/lib/mysql 
+      - mysql_data:/var/lib/mysql
   mongodb:
     image: mongo:latest
     ports:
@@ -21,8 +21,16 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: root
     volumes:
       - mongodb_data:/data/db
+  redis:
+    image: redis:7-alpine
+    # Use REDIS_URL=redis://redis:6379 from other containers in this compose network.
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
 
 
 volumes:
   mysql_data:
   mongodb_data:
+  redis_data:

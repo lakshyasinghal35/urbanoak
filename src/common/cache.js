@@ -1,85 +1,8 @@
-const config = require('../config/app.config');
-
-let redisModule = null;
-try {
-  redisModule = require('redis');
-} catch (err) {
-  redisModule = null;
-}
-
-
-const CACHE_DISABLED = String(config.CACHE_ENABLED ?? process.env.CACHE_ENABLED ?? 'true').toLowerCase() === 'false';
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const { getRedisClient } = require('../config/redis');
 const CACHE_PREFIX = 'catalog:v1';
 
-let client = null;
-let connectPromise = null;
-let missingDependencyWarningShown = false;
-let connectionWarningShown = false;
-const isTestEnv = process.env.NODE_ENV === 'test';
-
-function canUseRedis() {
-  if (CACHE_DISABLED) {
-    return false;
-  }
-
-  if (!redisModule) {
-    if (!missingDependencyWarningShown) {
-      missingDependencyWarningShown = true;
-      if (!isTestEnv) {
-        console.warn('[cache] redis package is not installed. Cache is disabled.');
-      }
-    }
-    return false;
-  }
-
-  return true;
-}
-
-async function getClient() {
-  if (!canUseRedis()) {
-    return null;
-  }
-
-  if (client?.isOpen) {
-    return client;
-  }
-
-  if (!client) {
-    client = redisModule.createClient({ url: REDIS_URL });
-    client.on('error', error => {
-      if (!connectionWarningShown) {
-        connectionWarningShown = true;
-        if (!isTestEnv) {
-          console.warn(`[cache] redis client error: ${error.message}`);
-        }
-      }
-    });
-  }
-
-  if (!client.isOpen) {
-    if (!connectPromise) {
-      connectPromise = client.connect()
-        .catch(error => {
-          if (!connectionWarningShown) {
-            connectionWarningShown = true;
-            if (!isTestEnv) {
-              console.warn(`[cache] unable to connect to redis: ${error.message}`);
-            }
-          }
-        })
-        .finally(() => {
-          connectPromise = null;
-        });
-    }
-    await connectPromise;
-  }
-
-  return client.isOpen ? client : null;
-}
-
-async function getJSON(key) {
-  const cacheClient = await getClient();
+async function get(key) {
+  const cacheClient = await getRedisClient();
   if (!cacheClient) {
     return null;
   }
@@ -96,8 +19,8 @@ async function getJSON(key) {
   }
 }
 
-async function setJSON(key, value, ttlSeconds) {
-  const cacheClient = await getClient();
+async function set(key, value, ttlSeconds) {
+  const cacheClient = await getRedisClient();
   if (!cacheClient || value == null) {
     return;
   }
@@ -111,19 +34,19 @@ async function setJSON(key, value, ttlSeconds) {
   await cacheClient.set(key, payload);
 }
 
-async function rememberJSON(key, ttlSeconds, loader) {
-  const cached = await getJSON(key);
+async function save(key, ttlSeconds, loader) {
+  const cached = await get(key);
   if (cached != null) {
     return cached;
   }
 
   const data = await loader();
-  await setJSON(key, data, ttlSeconds);
+  await set(key, data, ttlSeconds);
   return data;
 }
 
 async function deleteKeys(keys) {
-  const cacheClient = await getClient();
+  const cacheClient = await getRedisClient();
   if (!cacheClient || !Array.isArray(keys) || keys.length === 0) {
     return;
   }
@@ -137,7 +60,7 @@ async function deleteKeys(keys) {
 }
 
 async function deleteByPrefix(prefixes) {
-  const cacheClient = await getClient();
+  const cacheClient = await getRedisClient();
   if (!cacheClient || !Array.isArray(prefixes) || prefixes.length === 0) {
     return;
   }
@@ -167,9 +90,9 @@ function normalizeName(name) {
 }
 
 module.exports = {
-  getJSON,
-  setJSON,
-  rememberJSON,
+  get,
+  set,
+  save,
   deleteKeys,
   deleteByPrefix,
   buildCacheKey,

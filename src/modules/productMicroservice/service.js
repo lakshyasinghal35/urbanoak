@@ -39,14 +39,14 @@ async function fetchCategory(id, name) {
   }
 
   if (id) {
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('category', 'id', id),
       CACHE_TTL_SECONDS.CATALOG,
       () => repository.getCategoryById(id),
     );
   }
 
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('category', 'name', normalizeName(name)),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getCategoryByName(name),
@@ -54,7 +54,7 @@ async function fetchCategory(id, name) {
 }
 
 async function fetchAllCategories() {
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('categories', 'all'),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getAllCategories(),
@@ -99,14 +99,14 @@ async function fetchSpace(id, name) {
   }
 
   if (id) {
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('space', 'id', id),
       CACHE_TTL_SECONDS.CATALOG,
       () => repository.getSpaceById(id),
     );
   }
 
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('space', 'name', normalizeName(name)),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getSpaceByName(name),
@@ -114,7 +114,7 @@ async function fetchSpace(id, name) {
 }
 
 async function fetchAllSpaces() {
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('spaces', 'all'),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getAllSpaces(),
@@ -160,14 +160,14 @@ async function fetchSection(id, space_id) {
   }
 
   if (id) {
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('section', 'id', id),
       CACHE_TTL_SECONDS.CATALOG,
       () => repository.getSectionById(id),
     );
   }
 
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('sections', 'space', space_id),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getSectionsBySpaceId(space_id),
@@ -175,7 +175,7 @@ async function fetchSection(id, space_id) {
 }
 
 async function fetchAllSections() {
-  return cache.rememberJSON(
+  return cache.save(
     buildCacheKey('sections', 'all'),
     CACHE_TTL_SECONDS.CATALOG,
     () => repository.getAllSections(),
@@ -218,7 +218,7 @@ async function saveProduct(product) {
 
 async function fetchProducts({ id, categoryIds, page, limit } = {}) {
   if (id) {
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('product', 'id', id),
       CACHE_TTL_SECONDS.PRODUCT,
       () => repository.getProductById(id),
@@ -227,7 +227,7 @@ async function fetchProducts({ id, categoryIds, page, limit } = {}) {
 
   if (categoryIds?.length) {
     const normalizedCategoryIds = normalizeCategoryIds(categoryIds);
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('products', 'categories', normalizedCategoryIds.join(',')),
       CACHE_TTL_SECONDS.PRODUCT,
       () => repository.getProductsByCategoryIds(normalizedCategoryIds),
@@ -238,7 +238,7 @@ async function fetchProducts({ id, categoryIds, page, limit } = {}) {
     const pageNum = Number(page) > 0 ? Number(page) : 1;
     const limitNum = Number(limit) > 0 ? Number(limit) : 20;
     const offset = (pageNum - 1) * limitNum;
-    return cache.rememberJSON(
+    return cache.save(
       buildCacheKey('products', 'page', pageNum, 'limit', limitNum),
       CACHE_TTL_SECONDS.PRODUCT,
       () => repository.getProducts({ offset, limit: limitNum }),
