@@ -3,7 +3,7 @@ const https = require("https");
 const fs = require('fs');
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const { sendError } = require('./utils/response');
+const { sendError } = require('./common/response');
 
 const app = express();
 

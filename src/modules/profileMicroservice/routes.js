@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const service = require('./service');
-const { sendSuccess } = require('../../utils/response');
-const asyncHandler = require('../../utils/asyncHandler');
+const { sendSuccess } = require('../../common/response');
+const asyncHandler = require('../../common/asyncHandler');
 
 // POST /users - Create a new user
 router.post('/users', asyncHandler(async (req, res) => {

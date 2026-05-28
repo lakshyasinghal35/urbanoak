@@ -4,7 +4,7 @@ const Category = require('./model/category');
 const Space = require('./model/space');
 const Section = require('./model/section');
 const queries = require('./query');
-const ApiError = require('../../utils/apiError');
+const ApiError = require('../../common/apiError');
 const { ProductModel, isDuplicateKeyError } = require('../../models/mongoSchemas');
 
 //--------------------------------category--------------------------------

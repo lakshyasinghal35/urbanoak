@@ -26,5 +26,6 @@
 		"password":"root",
 		"auth_mechanism":"SCRAM-SHA-1",
 		"auth_source":"admin"
-	}
+	},
+	"CACHE_ENABLED": true
 }

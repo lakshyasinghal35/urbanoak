@@ -1,5 +1,5 @@
 const repository = require('../../../src/modules/productMicroservice/repository');
-const ApiError = require('../../../src/utils/apiError');
+const ApiError = require('../../../src/common/apiError');
 const productService = require('../../../src/modules/productMicroservice/service');
 
 jest.mock('../../../src/modules/productMicroservice/repository');

@@ -1,3 +1,5 @@
+const config = require('../config/app.config');
+
 let redisModule = null;
 try {
   redisModule = require('redis');
@@ -5,8 +7,10 @@ try {
   redisModule = null;
 }
 
-const CACHE_DISABLED = String(process.env.CACHE_ENABLED || 'true').toLowerCase() === 'false';
+
+const CACHE_DISABLED = String(config.CACHE_ENABLED ?? process.env.CACHE_ENABLED ?? 'true').toLowerCase() === 'false';
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const CACHE_PREFIX = 'catalog:v1';
 
 let client = null;
 let connectPromise = null;
@@ -154,10 +158,20 @@ async function deleteByPrefix(prefixes) {
   }
 }
 
+function buildCacheKey(...parts) {
+  return `${CACHE_PREFIX}:${parts.join(':')}`;
+}
+
+function normalizeName(name) {
+  return String(name).trim().toLowerCase();
+}
+
 module.exports = {
   getJSON,
   setJSON,
   rememberJSON,
   deleteKeys,
   deleteByPrefix,
+  buildCacheKey,
+  normalizeName,
 };
