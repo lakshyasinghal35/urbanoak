@@ -1,12 +1,20 @@
 const repository = require('./repository');
 const ApiError = require('../../common/apiError');
 const cache = require('../../common/cache');
+const { uploadImageToS3 } = require('../../common/s3Uploader');
 const { buildCacheKey, normalizeName } = cache;
 const {
   CACHE_TTL_SECONDS,
   normalizeCategoryIds,
   invalidateCatalogCaches,
 } = require('./util');
+
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
 
 //--------------------------------category--------------------------------
 
@@ -262,6 +270,54 @@ async function removeProduct(id) {
   return true;
 }
 
+async function uploadCatalogImage(file, productId) {
+  if (!file) {
+    throw ApiError.badRequest('Image file is required');
+  }
+
+  if (!productId) {
+    throw ApiError.badRequest('product_id is required');
+  }
+
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
+    throw ApiError.badRequest('Only jpeg, png, webp and gif images are supported');
+  }
+
+  const uploaded = await uploadImageToS3({
+    buffer: file.buffer,
+    mimeType: file.mimetype,
+    originalName: file.originalname,
+  });
+
+  const product = await repository.getProductById(productId);
+  if (!product) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  const existingImages = Array.isArray(product.images) ? product.images : [];
+  const updatedImages = [...existingImages, uploaded.url];
+
+  const updatedProduct = await repository.saveProduct({
+    ...product,
+    images: updatedImages,
+  });
+
+  if (!updatedProduct) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  return {
+    product_id: productId,
+    file_name: file.originalname,
+    content_type: file.mimetype,
+    size: file.size,
+    bucket: uploaded.bucket,
+    key: uploaded.key,
+    url: uploaded.url,
+    images: updatedImages,
+  };
+}
+
 module.exports = {
   saveCategory,
   fetchCategory,
@@ -278,4 +334,5 @@ module.exports = {
   saveProduct,
   fetchProducts,
   removeProduct,
+  uploadCatalogImage,
 };

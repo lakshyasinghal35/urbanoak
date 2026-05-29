@@ -670,6 +670,44 @@
           "description": null,
           "item": [
             {
+              "name": "Upload product image",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/images/upload",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "images",
+                    "upload"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "product_id",
+                      "type": "text",
+                      "value": "REPLACE_WITH_MONGO_PRODUCT_ID",
+                      "description": "MongoDB product id"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "",
+                      "description": "Pick an image file from your local machine"
+                    }
+                  ]
+                },
+                "description": "Uploads image to S3, appends URL into product.images, and returns updated images metadata."
+              },
+              "response": []
+            },
+            {
               "name": "Create product",
               "request": {
                 "method": "POST",

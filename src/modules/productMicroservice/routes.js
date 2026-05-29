@@ -3,17 +3,10 @@ const router = express.Router();
 const { sendSuccess } = require('../../common/response');
 const asyncHandler = require('../../common/asyncHandler');
 const service = require('./service');
-
-function parseCategoryIds(value) {
-  if (!value) {
-    return [];
-  }
-
-  return String(value)
-    .split(',')
-    .map(id => Number(id.trim()))
-    .filter(id => !Number.isNaN(id));
-}
+const {
+  singleImageUploadMiddleware,
+  parseCategoryIds,
+} = require('./util');
 
 //--------------------------------space routes--------------------------------
 
@@ -133,6 +126,11 @@ router.get('/products/list', asyncHandler(async (req, res) => {
 router.delete('/products/:id', asyncHandler(async (req, res) => {
   await service.removeProduct(req.params.id);
   sendSuccess(res, { deleted: true });
+}));
+
+router.post('/products/images/upload', singleImageUploadMiddleware, asyncHandler(async (req, res) => {
+  const data = await service.uploadCatalogImage(req.file, req.body.product_id);
+  sendSuccess(res, data, 201);
 }));
 
 module.exports = router;
