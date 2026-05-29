@@ -27,5 +27,11 @@
 		"auth_mechanism":"SCRAM-SHA-1",
 		"auth_source":"admin"
 	},
+	"s3":{
+		"region":"ap-south-1",
+		"bucket_name":"urbanoak",
+		"catalog_prefix":"catalog",
+		"public_base_url":""
+	},
 	"CACHE_ENABLED": true
 }

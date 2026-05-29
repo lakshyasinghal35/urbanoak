@@ -106,12 +106,12 @@ Import the collection and local environment from **`postman/`** (see [postman/RE
 
 Database and server settings live in **`src/config/app.config.json`**. Update host, port, credentials, or `httpPort` there if your local setup differs from Docker defaults.
 
-S3 image upload (catalog) is configured via environment variables:
+S3 image upload (catalog) is configured in `src/config/app.config.json` under the `s3` block:
 
-- `S3_BUCKET_NAME` (required)
-- `S3_REGION` (optional, default `ap-south-1`)
-- `S3_CATALOG_PREFIX` (optional, default `catalog`)
-- `S3_PUBLIC_BASE_URL` (optional, use your CDN/custom domain base URL)
+- `region` (optional, default `ap-south-1`)
+- `bucket_name` (required)
+- `catalog_prefix` (optional, default `catalog`)
+- `public_base_url` (optional, use your CDN/custom domain base URL)
 - `S3_MAX_IMAGE_SIZE_BYTES` (optional, default `5242880`)
 
 Upload endpoint: `POST /api/products/images/upload` (multipart form-data, field name: `image`).
