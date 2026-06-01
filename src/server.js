@@ -4,6 +4,8 @@ const fs = require('fs');
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const { sendError } = require('./common/response');
+const { ensureSearchIndex } = require('./modules/searchMicroservice/indexManager');
+const { startSearchIndexWorker } = require('./modules/searchMicroservice/index.worker');
 
 const app = express();
 
@@ -23,7 +25,7 @@ function start(){
 	addRouters();
 	addErrorHandler();
 	handleUnidentifiedRoutes();
-	
+	setupSearchIndex();
 	listen();
 }
 
@@ -147,6 +149,14 @@ function addRouters(){
 	}
 	//the static router must come at the end or else it will create havoc on routes
 	app.use('/',routers.staticRouter);
+}
+
+
+function setupSearchIndex(){
+	ensureSearchIndex().catch(error => {
+		console.error('[search] index setup failed:', error.message);
+	});
+	startSearchIndexWorker();
 }
 
 

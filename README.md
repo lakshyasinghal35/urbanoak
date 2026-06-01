@@ -23,6 +23,7 @@ This starts:
 |---------|-----------|-------------|
 | MySQL (Docker) | **3307** → container 3306 | user `root`, password `root`, database `urbanoak` |
 | MongoDB | 27017 | user `root`, password `root`, auth database `admin` |
+| Elasticsearch | 9200 | local dev single-node (security disabled) |
 
 `app.config.json` uses MySQL on port **3306** by default (typical for a local MySQL install).
 
@@ -116,6 +117,25 @@ S3 image upload (catalog) is configured in `src/config/app.config.json` under th
 
 Upload endpoint: `POST /api/products/images/upload` (multipart form-data, field name: `image`).
 Pass `product_id` in the same form-data payload; the API appends uploaded image URL to that product's `images` array and persists it.
+
+Elasticsearch product search is configured in `src/config/app.config.json` under `elasticsearch`:
+
+- `enabled`
+- `node` (default `http://127.0.0.1:9200`)
+- `index_name`
+- `worker_poll_ms`
+- `worker_batch_size`
+
+Search endpoints:
+
+- `GET /api/products/search?q=<text>&category_ids=1,2&page=1&limit=20`
+- `GET /api/products/suggest?q=<prefix>&limit=10`
+
+Reindex existing products into Elasticsearch:
+
+```bash
+npm run reindex:products
+```
 
 Entry point: **`src/app.js`** (loads config, connects to databases, then starts the HTTP server).
 

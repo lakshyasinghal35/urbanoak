@@ -48,3 +48,15 @@ Replace `REPLACE_WITH_MONGO_PRODUCT_ID` in product/order bodies with a real prod
 - Choose a local file in the `image` form-data field
 - Endpoint: `POST /api/products/images/upload`
 - Response includes `bucket`, `key`, `url`, and updated `images` array persisted on the product
+
+## Product search
+
+- Use `Product -> Products -> Search products`
+- Endpoint: `GET /api/products/search`
+- Required query param: `q`
+- Optional query params: `category_ids`, `page`, `limit`
+
+- Use `Product -> Products -> Suggest products`
+- Endpoint: `GET /api/products/suggest`
+- Required query param: `q`
+- Optional query param: `limit`
