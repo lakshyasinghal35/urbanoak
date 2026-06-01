@@ -33,5 +33,12 @@
 		"catalog_prefix":"catalog",
 		"public_base_url":""
 	},
+	"elasticsearch":{
+		"enabled": true,
+		"node":"http://127.0.0.1:9200",
+		"index_name":"urbanoak_products",
+		"worker_poll_ms":2000,
+		"worker_batch_size":10
+	},
 	"CACHE_ENABLED": true
 }

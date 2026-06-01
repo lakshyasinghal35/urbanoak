@@ -207,6 +207,20 @@ const collection = {
         request('Get products by categories', 'GET', '/api/products', {
           query: [{ key: 'category_ids', value: '1,2' }],
         }),
+        request('Search products', 'GET', '/api/products/search', {
+          query: [
+            { key: 'q', value: 'oak chair' },
+            { key: 'category_ids', value: '1,2' },
+            { key: 'page', value: '1' },
+            { key: 'limit', value: '10' },
+          ],
+        }),
+        request('Suggest products', 'GET', '/api/products/suggest', {
+          query: [
+            { key: 'q', value: 'oa' },
+            { key: 'limit', value: '5' },
+          ],
+        }),
         request('List products (paginated)', 'GET', '/api/products/list', {
           query: [
             { key: 'page', value: '1' },

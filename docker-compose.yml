@@ -28,9 +28,22 @@ services:
       - 6379:6379
     volumes:
       - redis_data:/data
+  elasticsearch:
+    # Run x86_64 image via emulation to avoid ARM JVM SIGILL crashes on some local Docker setups.
+    platform: linux/amd64
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - 9200:9200
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
 
 
 volumes:
   mysql_data:
   mongodb_data:
   redis_data:
+  elasticsearch_data:

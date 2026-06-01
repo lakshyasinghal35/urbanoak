@@ -2,6 +2,7 @@ const repository = require('./repository');
 const ApiError = require('../../common/apiError');
 const cache = require('../../common/cache');
 const { uploadImageToS3 } = require('../../common/s3Uploader');
+const searchOutbox = require('../searchMicroservice/outbox.repository');
 const { buildCacheKey, normalizeName } = cache;
 const {
   CACHE_TTL_SECONDS,
@@ -220,6 +221,7 @@ async function saveProduct(product) {
     productId: savedProduct?.id || product.id,
     categoryId: savedProduct?.category_id || product.category_id,
   });
+  await enqueueProductUpsert(savedProduct?.id || product.id);
 
   return savedProduct;
 }
@@ -267,6 +269,7 @@ async function removeProduct(id) {
   }
 
   await invalidateCatalogCaches({ productId: id });
+  await enqueueProductDelete(id);
   return true;
 }
 
@@ -306,6 +309,8 @@ async function uploadCatalogImage(file, productId) {
     throw ApiError.notFound('Product not found');
   }
 
+  await enqueueProductUpsert(updatedProduct.id || productId);
+
   return {
     product_id: productId,
     file_name: file.originalname,
@@ -316,6 +321,30 @@ async function uploadCatalogImage(file, productId) {
     url: uploaded.url,
     images: updatedImages,
   };
+}
+
+//--------------------------------push to search index queue--------------------------------
+
+async function enqueueProductUpsert(productId) {
+  if (!productId) {
+    return;
+  }
+
+  await searchOutbox.enqueueProductEvent(
+    searchOutbox.SEARCH_EVENT_TYPES.PRODUCT_UPSERT,
+    String(productId)
+  );
+}
+
+async function enqueueProductDelete(productId) {
+  if (!productId) {
+    return;
+  }
+
+  await searchOutbox.enqueueProductEvent(
+    searchOutbox.SEARCH_EVENT_TYPES.PRODUCT_DELETE,
+    String(productId)
+  );
 }
 
 module.exports = {

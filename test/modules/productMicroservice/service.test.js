@@ -4,8 +4,16 @@ global.appRoot = path.join(__dirname, '../../../src');
 const repository = require('../../../src/modules/productMicroservice/repository');
 const ApiError = require('../../../src/common/apiError');
 const cache = require('../../../src/common/cache');
+const searchOutbox = require('../../../src/modules/searchMicroservice/outbox.repository');
 
 jest.mock('../../../src/modules/productMicroservice/repository');
+jest.mock('../../../src/modules/searchMicroservice/outbox.repository', () => ({
+  SEARCH_EVENT_TYPES: {
+    PRODUCT_UPSERT: 'product_upsert',
+    PRODUCT_DELETE: 'product_delete',
+  },
+  enqueueProductEvent: jest.fn(),
+}));
 jest.mock('../../../src/common/s3Uploader', () => ({
   uploadImageToS3: jest.fn(),
 }));
@@ -19,6 +27,7 @@ describe('productMicroservice/service', () => {
     jest.spyOn(cache, 'save').mockImplementation(async (key, ttl, loader) => loader());
     jest.spyOn(cache, 'deleteKeys').mockResolvedValue();
     jest.spyOn(cache, 'deleteByPrefix').mockResolvedValue();
+    searchOutbox.enqueueProductEvent.mockResolvedValue();
   });
 
   describe('saveCategory', () => {
@@ -316,6 +325,7 @@ describe('productMicroservice/service', () => {
       await productService.saveProduct(validProduct);
 
       expect(repository.createProduct).toHaveBeenCalledWith(validProduct);
+      expect(searchOutbox.enqueueProductEvent).toHaveBeenCalledWith('product_upsert', '1');
     });
 
     it('updates product with id', async () => {
@@ -325,6 +335,7 @@ describe('productMicroservice/service', () => {
       await productService.saveProduct(product);
 
       expect(repository.saveProduct).toHaveBeenCalledWith(product);
+      expect(searchOutbox.enqueueProductEvent).toHaveBeenCalledWith('product_upsert', '9');
     });
   });
 
@@ -382,6 +393,7 @@ describe('productMicroservice/service', () => {
       repository.deleteProduct.mockResolvedValue(true);
 
       expect(await productService.removeProduct(1)).toBe(true);
+      expect(searchOutbox.enqueueProductEvent).toHaveBeenCalledWith('product_delete', '1');
     });
   });
 
@@ -470,6 +482,7 @@ describe('productMicroservice/service', () => {
           ],
         })
       );
+      expect(searchOutbox.enqueueProductEvent).toHaveBeenCalledWith('product_upsert', productId);
       expect(result).toEqual({
         product_id: productId,
         file_name: 'chair.png',

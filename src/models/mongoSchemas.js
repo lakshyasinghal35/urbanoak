@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const COLLECTIONS = {
   PRODUCTS: 'products',
   ORDERS: 'orders',
+  SEARCH_OUTBOX: 'search_outbox',
 };
 
 const productSchema = new Schema(
@@ -34,12 +35,30 @@ const orderSchema = new Schema(
   { collection: COLLECTIONS.ORDERS, timestamps: true }
 );
 
+const searchOutboxSchema = new Schema(
+  {
+    event_type: { type: String, required: true, index: true },
+    product_id: { type: String, required: true, index: true },
+    status: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: 'pending',
+      index: true,
+    },
+    attempts: { type: Number, default: 0 },
+    last_error: { type: String, default: null },
+  },
+  { collection: COLLECTIONS.SEARCH_OUTBOX, timestamps: true }
+);
+
 const ProductModel = mongoose.models.Product || mongoose.model('Product', productSchema);
 const OrderModel = mongoose.models.Order || mongoose.model('Order', orderSchema);
+const SearchOutboxModel = mongoose.models.SearchOutbox || mongoose.model('SearchOutbox', searchOutboxSchema);
 
 async function ensureMongoIndexes() {
   await ProductModel.syncIndexes();
   await OrderModel.syncIndexes();
+  await SearchOutboxModel.syncIndexes();
 }
 
 function isDuplicateKeyError(err) {
@@ -50,6 +69,7 @@ module.exports = {
   COLLECTIONS,
   ProductModel,
   OrderModel,
+  SearchOutboxModel,
   ensureMongoIndexes,
   isDuplicateKeyError,
 };
