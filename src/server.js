@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const { sendError } = require('./common/response');
 const { ensureSearchIndex } = require('./modules/searchMicroservice/indexManager');
 const { startSearchIndexWorker } = require('./modules/searchMicroservice/index.worker');
+const { connectKafkaProducer, isKafkaEnabled } = require('./config/kafka');
 
 const app = express();
 
@@ -26,6 +27,7 @@ function start(){
 	addErrorHandler();
 	handleUnidentifiedRoutes();
 	setupSearchIndex();
+	setupOrderEventPublisher();
 	listen();
 }
 
@@ -157,6 +159,16 @@ function setupSearchIndex(){
 		console.error('[search] index setup failed:', error.message);
 	});
 	startSearchIndexWorker();
+}
+
+function setupOrderEventPublisher(){
+	if(!isKafkaEnabled()){
+		return;
+	}
+
+	connectKafkaProducer().catch(error => {
+		console.error('[order-events] kafka producer connection failed:', error.message);
+	});
 }
 
 

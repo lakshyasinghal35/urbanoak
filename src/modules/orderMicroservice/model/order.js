@@ -30,4 +30,31 @@ class Order {
   }
 }
 
-module.exports = Order;
+
+/**
+ * Prepare payload object for message queue based on an order input
+ * @param {Order|Object} order
+ * @param {string} action
+ * @returns {Object} Payload for message queue (all relevant fields)
+ */
+function getPayload(order, action) {
+  // Accept both Order instance or plain object
+  if (!order) return {};
+
+  return {
+    id: order.id,
+    user_id: order.user_id,
+    items: order.items,
+    delivery_details: order.delivery_details,
+    billing_details: order.billing_details,
+    total_amount: order.total_amount,
+    status: order.status,
+    action
+  };
+};
+
+
+module.exports = {
+  Order,
+  getPayload,
+};

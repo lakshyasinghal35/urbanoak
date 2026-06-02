@@ -1,5 +1,15 @@
 const repository = require('./repository');
 const ApiError = require('../../common/apiError');
+const { pushMessage } = require('../../common/messageProducer');
+const config = require('../../config/app.config.json');
+const { getPayload } = require('./model/order');
+
+const KAFKA_CONFIG = config.kafka || {};
+const ORDER_EVENTS_TOPIC = KAFKA_CONFIG.topic?.order_events || 'order_events';
+const ORDER_EVENT_TYPES = {
+  CREATED: 'order.created',
+  UPDATED: 'order.updated',
+};
 
 //--------------------------------order--------------------------------
 
@@ -8,7 +18,43 @@ async function saveOrder(order) {
     throw ApiError.badRequest('Missing required order fields: user_id, items, delivery_details, billing_details, total_amount');
   }
 
-  return order.id ? repository.saveOrder(order) : repository.createOrder(order);
+  if (order.id) {
+    const updatedOrder = await repository.saveOrder(order);
+    if (!updatedOrder) {
+      throw ApiError.notFound('Order not found');
+    }
+
+    await publishOrderEventSafely('updated', updatedOrder);
+    return updatedOrder;
+  }
+
+  const createdOrder = await repository.createOrder(order);
+  await publishOrderEventSafely('created', createdOrder);
+  return createdOrder;
+}
+
+async function publishOrderEventSafely(eventType, order) {
+  try {
+    const normalizedEventType = eventType === 'created'
+      ? ORDER_EVENT_TYPES.CREATED
+      : ORDER_EVENT_TYPES.UPDATED;
+
+    await pushMessage({
+      topic: ORDER_EVENTS_TOPIC,
+      key: String(order.id),
+      payload: getPayload(order, normalizedEventType),
+      context: {
+        orderId: String(order.id),
+      },
+    });
+  } catch (error) {
+    // Best-effort strategy: keep order API successful even if messaging fails.
+    console.error('[order-events] publish failed in service layer', {
+      eventType,
+      orderId: String(order?.id || ''),
+      error: error.message,
+    });
+  }
 }
 
 async function fetchOrder(id, user_id) {

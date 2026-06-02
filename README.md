@@ -24,6 +24,7 @@ This starts:
 | MySQL (Docker) | **3307** → container 3306 | user `root`, password `root`, database `urbanoak` |
 | MongoDB | 27017 | user `root`, password `root`, auth database `admin` |
 | Elasticsearch | 9200 | local dev single-node (security disabled) |
+| Kafka | 9092 | local dev KRaft broker |
 
 `app.config.json` uses MySQL on port **3306** by default (typical for a local MySQL install).
 
@@ -130,6 +131,13 @@ Search endpoints:
 
 - `GET /api/products/search?q=<text>&category_ids=1,2&page=1&limit=20`
 - `GET /api/products/suggest?q=<prefix>&limit=10`
+
+Order event publishing is configured under `kafka`:
+
+- `enabled`
+- `client_id`
+- `brokers`
+- `topic.order_events`
 
 Reindex existing products into Elasticsearch:
 
