@@ -1,11 +1,16 @@
 const repository = require('../../../src/modules/orderMicroservice/repository');
+const messageProducer = require('../../../src/common/messageProducer');
 const orderService = require('../../../src/modules/orderMicroservice/service');
 
 jest.mock('../../../src/modules/orderMicroservice/repository');
+jest.mock('../../../src/common/messageProducer', () => ({
+  pushMessage: jest.fn(),
+}));
 
 describe('orderMicroservice/service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    messageProducer.pushMessage.mockResolvedValue(true);
   });
 
   const validOrder = {
@@ -31,6 +36,7 @@ describe('orderMicroservice/service', () => {
 
       expect(repository.createOrder).toHaveBeenCalledWith(validOrder);
       expect(repository.saveOrder).not.toHaveBeenCalled();
+      expect(messageProducer.pushMessage).toHaveBeenCalled();
       expect(result.id).toBe(1);
     });
 
@@ -41,7 +47,29 @@ describe('orderMicroservice/service', () => {
       const result = await orderService.saveOrder(order);
 
       expect(repository.saveOrder).toHaveBeenCalledWith(order);
+      expect(messageProducer.pushMessage).toHaveBeenCalled();
       expect(result).toBe(order);
+    });
+
+    it('throws not found when update order returns null', async () => {
+      const order = { id: 999, ...validOrder };
+      repository.saveOrder.mockResolvedValue(null);
+
+      await expect(orderService.saveOrder(order)).rejects.toMatchObject({
+        message: 'Order not found',
+        statusCode: 404,
+      });
+      expect(messageProducer.pushMessage).not.toHaveBeenCalled();
+    });
+
+    it('still succeeds when publish returns false for created order', async () => {
+      repository.createOrder.mockResolvedValue({ id: 3, ...validOrder });
+      messageProducer.pushMessage.mockResolvedValue(false);
+
+      const result = await orderService.saveOrder(validOrder);
+
+      expect(result.id).toBe(3);
+      expect(messageProducer.pushMessage).toHaveBeenCalled();
     });
   });
 

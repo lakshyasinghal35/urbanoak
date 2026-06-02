@@ -1,5 +1,5 @@
 const { pool } = require('../../config/db');
-const Order = require('./model/order');
+const { Order } = require('./model/order');
 const { Cart, CartItem } = require('./model/cart');
 const queries = require('./query');
 const { OrderModel } = require('../../models/mongoSchemas');
