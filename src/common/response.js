@@ -1,9 +1,13 @@
 function sendSuccess(res, data, statusCode = 200) {
-    res.status(statusCode).json({ success: true, data });
+  res.status(statusCode).json({ success: true, data });
+}
+
+function sendError(res, message, statusCode = 400, details) {
+  const payload = { success: false, message };
+  if (details !== undefined) {
+    payload.details = details;
   }
-  
-  function sendError(res, message, statusCode = 400) {
-    res.status(statusCode).json({ success: false, message });
-  }
-  
-  module.exports = { sendSuccess, sendError };
+  res.status(statusCode).json(payload);
+}
+
+module.exports = { sendSuccess, sendError };

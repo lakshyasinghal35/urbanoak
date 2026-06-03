@@ -1,16 +1,28 @@
 const repository = require('../../../src/modules/orderMicroservice/repository');
 const messageProducer = require('../../../src/common/messageProducer');
+const productService = require('../../../src/modules/productMicroservice/service');
+const productRepository = require('../../../src/modules/productMicroservice/repository');
 const orderService = require('../../../src/modules/orderMicroservice/service');
 
 jest.mock('../../../src/modules/orderMicroservice/repository');
 jest.mock('../../../src/common/messageProducer', () => ({
   pushMessage: jest.fn(),
 }));
+jest.mock('../../../src/modules/productMicroservice/service', () => ({
+  decrementProductInventoryIfAvailable: jest.fn(),
+  incrementProductInventory: jest.fn(),
+}));
+jest.mock('../../../src/modules/productMicroservice/repository', () => ({
+  getProductById: jest.fn(),
+}));
 
 describe('orderMicroservice/service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     messageProducer.pushMessage.mockResolvedValue(true);
+    productService.decrementProductInventoryIfAvailable.mockResolvedValue({ id: '10', units: 8, category_id: 1 });
+    productService.incrementProductInventory.mockResolvedValue({ id: '10', units: 10, category_id: 1 });
+    productRepository.getProductById.mockResolvedValue({ id: '10', units: 0 });
   });
 
   const validOrder = {
@@ -34,10 +46,66 @@ describe('orderMicroservice/service', () => {
 
       const result = await orderService.saveOrder(validOrder);
 
+      expect(productService.decrementProductInventoryIfAvailable).toHaveBeenCalledWith('10', 2);
       expect(repository.createOrder).toHaveBeenCalledWith(validOrder);
       expect(repository.saveOrder).not.toHaveBeenCalled();
       expect(messageProducer.pushMessage).toHaveBeenCalled();
       expect(result.id).toBe(1);
+    });
+
+    it('throws conflict when inventory is insufficient', async () => {
+      productService.decrementProductInventoryIfAvailable.mockResolvedValue(null);
+      productRepository.getProductById.mockResolvedValue({ id: '10', units: 1 });
+
+      await expect(orderService.saveOrder(validOrder)).rejects.toMatchObject({
+        message: 'Insufficient inventory',
+        statusCode: 409,
+        details: {
+          shortages: [
+            {
+              product_id: '10',
+              requested: 2,
+              available: 1,
+            },
+          ],
+        },
+      });
+
+      expect(repository.createOrder).not.toHaveBeenCalled();
+      expect(productService.incrementProductInventory).not.toHaveBeenCalled();
+      expect(messageProducer.pushMessage).not.toHaveBeenCalled();
+    });
+
+    it('rolls back reserved inventory on partial failure', async () => {
+      const orderWithTwoItems = {
+        ...validOrder,
+        items: [
+          { product_id: 10, quantity: 2 },
+          { product_id: 20, quantity: 1 },
+        ],
+      };
+
+      productService.decrementProductInventoryIfAvailable
+        .mockResolvedValueOnce({ id: '10', units: 8, category_id: 1 })
+        .mockResolvedValueOnce(null);
+      productRepository.getProductById.mockResolvedValue({ id: '20', units: 0 });
+
+      await expect(orderService.saveOrder(orderWithTwoItems)).rejects.toMatchObject({
+        statusCode: 409,
+      });
+
+      expect(productService.incrementProductInventory).toHaveBeenCalledWith('10', 2);
+      expect(repository.createOrder).not.toHaveBeenCalled();
+      expect(messageProducer.pushMessage).not.toHaveBeenCalled();
+    });
+
+    it('rolls back reserved inventory when order persistence fails', async () => {
+      repository.createOrder.mockRejectedValue(new Error('db down'));
+
+      await expect(orderService.saveOrder(validOrder)).rejects.toThrow('db down');
+
+      expect(productService.incrementProductInventory).toHaveBeenCalledWith('10', 2);
+      expect(messageProducer.pushMessage).not.toHaveBeenCalled();
     });
 
     it('updates order when id is present', async () => {

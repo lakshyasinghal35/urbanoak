@@ -265,6 +265,63 @@ async function getProductsByCategoryIds(categoryIds) {
   return docs.map(doc => new Product(queries.toProduct(doc)));
 }
 
+async function updateProductUnits(productId, units) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findByIdAndUpdate(
+    productId,
+    { $set: { units } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
+}
+
+async function decrementProductUnitsIfAvailable(productId, quantity) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findOneAndUpdate(
+    {
+      _id: productId,
+      units: { $gte: quantity },
+    },
+    { $inc: { units: -quantity } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
+}
+
+async function incrementProductUnits(productId, quantity) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findByIdAndUpdate(
+    productId,
+    { $inc: { units: quantity } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
+}
+
 module.exports = {
   createCategory,
   saveCategory,
@@ -290,4 +347,7 @@ module.exports = {
   getProductById,
   getProducts,
   getProductsByCategoryIds,
+  updateProductUnits,
+  decrementProductUnitsIfAvailable,
+  incrementProductUnits,
 };

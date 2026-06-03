@@ -17,6 +17,15 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/gif',
 ]);
 
+function parseNonNegativeInteger(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 //--------------------------------category--------------------------------
 
 async function saveCategory(category) {
@@ -273,6 +282,67 @@ async function removeProduct(id) {
   return true;
 }
 
+async function updateProductInventory(productId, units) {
+  if (!productId) {
+    throw ApiError.badRequest('Product id is required');
+  }
+
+  const parsedUnits = parseNonNegativeInteger(units);
+  if (parsedUnits == null) {
+    throw ApiError.badRequest('Inventory units must be a non-negative integer');
+  }
+
+  const updatedProduct = await repository.updateProductUnits(productId, parsedUnits);
+  if (!updatedProduct) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  await invalidateCatalogCaches({
+    productId,
+    categoryId: updatedProduct.category_id,
+  });
+
+  return updatedProduct;
+}
+
+async function decrementProductInventoryIfAvailable(productId, quantity) {
+  const parsedQuantity = parseNonNegativeInteger(quantity);
+  if (parsedQuantity == null || parsedQuantity === 0) {
+    throw ApiError.badRequest('Inventory quantity must be a positive integer');
+  }
+
+  const updatedProduct = await repository.decrementProductUnitsIfAvailable(productId, parsedQuantity);
+  if (!updatedProduct) {
+    return null;
+  }
+
+  await invalidateCatalogCaches({
+    productId,
+    categoryId: updatedProduct.category_id,
+  });
+
+  return updatedProduct;
+}
+
+async function incrementProductInventory(productId, quantity) {
+  const parsedQuantity = parseNonNegativeInteger(quantity);
+  if (parsedQuantity == null || parsedQuantity === 0) {
+    throw ApiError.badRequest('Inventory quantity must be a positive integer');
+  }
+
+  const updatedProduct = await repository.incrementProductUnits(productId, parsedQuantity);
+  if (!updatedProduct) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  await invalidateCatalogCaches({
+    productId,
+    categoryId: updatedProduct.category_id,
+  });
+
+  return updatedProduct;
+}
+
 async function uploadCatalogImage(file, productId) {
   if (!file) {
     throw ApiError.badRequest('Image file is required');
@@ -363,5 +433,8 @@ module.exports = {
   saveProduct,
   fetchProducts,
   removeProduct,
+  updateProductInventory,
+  decrementProductInventoryIfAvailable,
+  incrementProductInventory,
   uploadCatalogImage,
 };
