@@ -375,6 +375,41 @@ describe('productMicroservice/service', () => {
     });
   });
 
+  describe('fetchProductInventory', () => {
+    const productId = '507f1f77bcf86cd799439011';
+
+    it('throws when product id is missing', async () => {
+      await expect(productService.fetchProductInventory()).rejects.toMatchObject({
+        message: 'Product id is required',
+        statusCode: 400,
+      });
+    });
+
+    it('throws not found when product does not exist', async () => {
+      repository.getProductUnitsById.mockResolvedValue(null);
+
+      await expect(productService.fetchProductInventory(productId)).rejects.toMatchObject({
+        message: 'Product not found',
+        statusCode: 404,
+      });
+    });
+
+    it('returns inventory by product id', async () => {
+      repository.getProductUnitsById.mockResolvedValue({
+        id: productId,
+        units: 7,
+      });
+
+      const result = await productService.fetchProductInventory(productId);
+
+      expect(repository.getProductUnitsById).toHaveBeenCalledWith(productId);
+      expect(result).toEqual({
+        product_id: productId,
+        units: 7,
+      });
+    });
+  });
+
   describe('removeProduct', () => {
     it('throws when id is missing', async () => {
       await expect(productService.removeProduct()).rejects.toMatchObject({ statusCode: 400 });
@@ -394,6 +429,67 @@ describe('productMicroservice/service', () => {
 
       expect(await productService.removeProduct(1)).toBe(true);
       expect(searchOutbox.enqueueProductEvent).toHaveBeenCalledWith('product_delete', '1');
+    });
+  });
+
+  describe('updateProductInventory', () => {
+    const productId = '507f1f77bcf86cd799439011';
+
+    it('throws when units is not a non-negative integer', async () => {
+      await expect(productService.updateProductInventory(productId, -1)).rejects.toMatchObject({
+        message: 'Inventory units must be a non-negative integer',
+        statusCode: 400,
+      });
+    });
+
+    it('throws not found when product does not exist', async () => {
+      repository.updateProductUnits.mockResolvedValue(null);
+
+      await expect(productService.updateProductInventory(productId, 5)).rejects.toMatchObject({
+        message: 'Product not found',
+        statusCode: 404,
+      });
+    });
+
+    it('updates units without enqueuing search sync', async () => {
+      repository.updateProductUnits.mockResolvedValue({
+        id: productId,
+        category_id: 1,
+        units: 9,
+      });
+
+      const result = await productService.updateProductInventory(productId, 9);
+
+      expect(repository.updateProductUnits).toHaveBeenCalledWith(productId, 9);
+      expect(searchOutbox.enqueueProductEvent).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ id: productId, units: 9 });
+    });
+  });
+
+  describe('decrementProductInventoryIfAvailable', () => {
+    const productId = '507f1f77bcf86cd799439011';
+
+    it('returns null when stock is insufficient', async () => {
+      repository.decrementProductUnitsIfAvailable.mockResolvedValue(null);
+
+      const result = await productService.decrementProductInventoryIfAvailable(productId, 2);
+
+      expect(result).toBeNull();
+      expect(searchOutbox.enqueueProductEvent).not.toHaveBeenCalled();
+    });
+
+    it('decrements units when stock is available', async () => {
+      repository.decrementProductUnitsIfAvailable.mockResolvedValue({
+        id: productId,
+        category_id: 1,
+        units: 3,
+      });
+
+      const result = await productService.decrementProductInventoryIfAvailable(productId, 2);
+
+      expect(repository.decrementProductUnitsIfAvailable).toHaveBeenCalledWith(productId, 2);
+      expect(searchOutbox.enqueueProductEvent).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ id: productId, units: 3 });
     });
   });
 

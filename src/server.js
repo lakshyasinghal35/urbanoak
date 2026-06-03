@@ -179,7 +179,7 @@ function addErrorHandler() {
 		if (statusCode === 500) {
 			console.error(err); // log real errors
 		}
-		sendError(res, message, statusCode);
+		sendError(res, message, statusCode, err.details);
 	});
 }
 

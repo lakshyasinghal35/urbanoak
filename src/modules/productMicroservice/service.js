@@ -17,6 +17,15 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/gif',
 ]);
 
+function parseNonNegativeInteger(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 //--------------------------------category--------------------------------
 
 async function saveCategory(category) {
@@ -258,6 +267,23 @@ async function fetchProducts({ id, categoryIds, page, limit } = {}) {
   throw ApiError.badRequest('Product id or category_ids is required');
 }
 
+async function fetchProductInventory(productId) {
+  if (!productId) {
+    throw ApiError.badRequest('Product id is required');
+  }
+
+  const productInventory = await repository.getProductUnitsById(productId);
+
+  if (!productInventory) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  return {
+    product_id: String(productInventory.id || productId),
+    units: productInventory.units,
+  };
+}
+
 async function removeProduct(id) {
   if (!id) {
     throw ApiError.badRequest('Product id is required');
@@ -271,6 +297,52 @@ async function removeProduct(id) {
   await invalidateCatalogCaches({ productId: id });
   await enqueueProductDelete(id);
   return true;
+}
+
+async function updateProductInventory(productId, units) {
+  if (!productId) {
+    throw ApiError.badRequest('Product id is required');
+  }
+
+  const parsedUnits = parseNonNegativeInteger(units);
+  if (parsedUnits == null) {
+    throw ApiError.badRequest('Inventory units must be a non-negative integer');
+  }
+
+  const updatedProduct = await repository.updateProductUnits(productId, parsedUnits);
+  if (!updatedProduct) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  return updatedProduct;
+}
+
+async function decrementProductInventoryIfAvailable(productId, quantity) {
+  const parsedQuantity = parseNonNegativeInteger(quantity);
+  if (parsedQuantity == null || parsedQuantity === 0) {
+    throw ApiError.badRequest('Inventory quantity must be a positive integer');
+  }
+
+  const updatedProduct = await repository.decrementProductUnitsIfAvailable(productId, parsedQuantity);
+  if (!updatedProduct) {
+    return null;
+  }
+
+  return updatedProduct;
+}
+
+async function incrementProductInventory(productId, quantity) {
+  const parsedQuantity = parseNonNegativeInteger(quantity);
+  if (parsedQuantity == null || parsedQuantity === 0) {
+    throw ApiError.badRequest('Inventory quantity must be a positive integer');
+  }
+
+  const updatedProduct = await repository.incrementProductUnits(productId, parsedQuantity);
+  if (!updatedProduct) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  return updatedProduct;
 }
 
 async function uploadCatalogImage(file, productId) {
@@ -362,6 +434,10 @@ module.exports = {
   removeSection,
   saveProduct,
   fetchProducts,
+  fetchProductInventory,
   removeProduct,
+  updateProductInventory,
+  decrementProductInventoryIfAvailable,
+  incrementProductInventory,
   uploadCatalogImage,
 };

@@ -245,6 +245,24 @@ async function getProductById(id) {
   return new Product(queries.toProduct(doc));
 }
 
+async function getProductUnitsById(id) {
+  if (!queries.isValidObjectId(id)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findById(id)
+    .select({ units: 1 })
+    .lean();
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    units: doc.units,
+  };
+}
+
 async function getProducts({ offset = 0, limit = 20 } = {}) {
   const docs = await ProductModel.find()
     .skip(offset)
@@ -263,6 +281,63 @@ async function getProductsByCategoryIds(categoryIds) {
   );
 
   return docs.map(doc => new Product(queries.toProduct(doc)));
+}
+
+async function updateProductUnits(productId, units) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findByIdAndUpdate(
+    productId,
+    { $set: { units } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
+}
+
+async function decrementProductUnitsIfAvailable(productId, quantity) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findOneAndUpdate(
+    {
+      _id: productId,
+      units: { $gte: quantity },
+    },
+    { $inc: { units: -quantity } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
+}
+
+async function incrementProductUnits(productId, quantity) {
+  if (!queries.isValidObjectId(productId)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findByIdAndUpdate(
+    productId,
+    { $inc: { units: quantity } },
+    { new: true, runValidators: true }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return new Product(queries.toProduct(doc));
 }
 
 module.exports = {
@@ -288,6 +363,10 @@ module.exports = {
   saveProduct,
   deleteProduct,
   getProductById,
+  getProductUnitsById,
   getProducts,
   getProductsByCategoryIds,
+  updateProductUnits,
+  decrementProductUnitsIfAvailable,
+  incrementProductUnits,
 };

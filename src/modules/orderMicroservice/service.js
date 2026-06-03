@@ -3,6 +3,8 @@ const ApiError = require('../../common/apiError');
 const { pushMessage } = require('../../common/messageProducer');
 const config = require('../../config/app.config.json');
 const { getPayload } = require('./model/order');
+const productService = require('../productMicroservice/service');
+const productRepository = require('../productMicroservice/repository');
 
 const KAFKA_CONFIG = config.kafka || {};
 const ORDER_EVENTS_TOPIC = KAFKA_CONFIG.topic?.order_events || 'order_events';
@@ -28,9 +30,116 @@ async function saveOrder(order) {
     return updatedOrder;
   }
 
-  const createdOrder = await repository.createOrder(order);
+  const reservedItems = await reserveInventoryForOrder(order.items);
+  let createdOrder;
+  try {
+    createdOrder = await repository.createOrder(order);
+  } catch (error) {
+    await rollbackInventory(reservedItems);
+    throw error;
+  }
+
   await publishOrderEventSafely('created', createdOrder);
   return createdOrder;
+}
+
+/**
+ * normalizeOrderItems
+ * Aggregates and validates the items in an order.
+ * - Ensures the items array is present and not empty.
+ * - Groups items by product_id summing their quantities.
+ * - Throws errors for missing product_id, or invalid quantities.
+ * - Returns an array of items in canonical order by product_id.
+ *
+ * @param {Array} items - The raw items from an order.
+ * @returns {Array} Normalized and aggregated order items.
+ */
+function normalizeOrderItems(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw ApiError.badRequest('Order must contain at least one item');
+  }
+
+  const aggregatedItems = new Map();
+  for (const item of items) {
+    if (!item || !item.product_id) {
+      throw ApiError.badRequest('Each order item must include product_id');
+    }
+
+    const quantity = Number(item.quantity);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw ApiError.badRequest(`Invalid quantity for product_id ${item.product_id}`);
+    }
+
+    const productId = String(item.product_id);
+    const existing = aggregatedItems.get(productId) || 0;
+    aggregatedItems.set(productId, existing + quantity);
+  }
+
+  return [...aggregatedItems.entries()]
+    .map(([product_id, quantity]) => ({ product_id, quantity }))
+    .sort((a, b) => a.product_id.localeCompare(b.product_id));
+}
+
+/**
+ * reserveInventoryForOrder
+ * Attempts to reserve inventory for each item in the order.
+ * - Uses normalizeOrderItems to aggregate and validate order items.
+ * - For each item, tries to decrement inventory via productService.
+ * - If inventory is insufficient for any item, rolls back all previous reservations and throws a conflict error with details.
+ * - Returns an array of the reserved items if inventory is successfully reserved for all.
+ *
+ * @param {Array} items - The order items to reserve inventory for.
+ * @returns {Promise<Array>} The list of reserved items.
+ * @throws {ApiError} If inventory is insufficient or order items are invalid.
+ */
+async function reserveInventoryForOrder(items) {
+  const normalizedItems = normalizeOrderItems(items);
+  const reservedItems = [];
+
+  for (const item of normalizedItems) {
+    const updatedProduct = await productService.decrementProductInventoryIfAvailable(
+      item.product_id,
+      item.quantity
+    );
+
+    if (!updatedProduct) {
+      await rollbackInventory(reservedItems);
+      const productInventory = await productRepository.getProductUnitsById(item.product_id);
+      const availableUnits = productInventory ? productInventory.units : 0;
+      throw ApiError.conflict('Insufficient inventory', {
+        shortages: [
+          {
+            product_id: item.product_id,
+            requested: item.quantity,
+            available: availableUnits,
+          },
+        ],
+      });
+    }
+
+    reservedItems.push(item);
+  }
+
+  return reservedItems;
+}
+
+async function rollbackInventory(reservedItems) {
+  if (!Array.isArray(reservedItems) || reservedItems.length === 0) {
+    return;
+  }
+
+  for (let i = reservedItems.length - 1; i >= 0; i -= 1) {
+    const item = reservedItems[i];
+    try {
+      await productService.incrementProductInventory(item.product_id, item.quantity);
+    } catch (error) {
+      console.error('[order-inventory] rollback failed', {
+        productId: item.product_id,
+        quantity: item.quantity,
+        error: error.message,
+      });
+    }
+  }
 }
 
 async function publishOrderEventSafely(eventType, order) {
