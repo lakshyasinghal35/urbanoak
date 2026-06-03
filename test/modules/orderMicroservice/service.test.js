@@ -13,7 +13,7 @@ jest.mock('../../../src/modules/productMicroservice/service', () => ({
   incrementProductInventory: jest.fn(),
 }));
 jest.mock('../../../src/modules/productMicroservice/repository', () => ({
-  getProductById: jest.fn(),
+  getProductUnitsById: jest.fn(),
 }));
 
 describe('orderMicroservice/service', () => {
@@ -22,7 +22,7 @@ describe('orderMicroservice/service', () => {
     messageProducer.pushMessage.mockResolvedValue(true);
     productService.decrementProductInventoryIfAvailable.mockResolvedValue({ id: '10', units: 8, category_id: 1 });
     productService.incrementProductInventory.mockResolvedValue({ id: '10', units: 10, category_id: 1 });
-    productRepository.getProductById.mockResolvedValue({ id: '10', units: 0 });
+    productRepository.getProductUnitsById.mockResolvedValue({ id: '10', units: 0 });
   });
 
   const validOrder = {
@@ -55,7 +55,7 @@ describe('orderMicroservice/service', () => {
 
     it('throws conflict when inventory is insufficient', async () => {
       productService.decrementProductInventoryIfAvailable.mockResolvedValue(null);
-      productRepository.getProductById.mockResolvedValue({ id: '10', units: 1 });
+      productRepository.getProductUnitsById.mockResolvedValue({ id: '10', units: 1 });
 
       await expect(orderService.saveOrder(validOrder)).rejects.toMatchObject({
         message: 'Insufficient inventory',
@@ -88,7 +88,7 @@ describe('orderMicroservice/service', () => {
       productService.decrementProductInventoryIfAvailable
         .mockResolvedValueOnce({ id: '10', units: 8, category_id: 1 })
         .mockResolvedValueOnce(null);
-      productRepository.getProductById.mockResolvedValue({ id: '20', units: 0 });
+      productRepository.getProductUnitsById.mockResolvedValue({ id: '20', units: 0 });
 
       await expect(orderService.saveOrder(orderWithTwoItems)).rejects.toMatchObject({
         statusCode: 409,

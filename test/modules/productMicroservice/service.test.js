@@ -375,6 +375,41 @@ describe('productMicroservice/service', () => {
     });
   });
 
+  describe('fetchProductInventory', () => {
+    const productId = '507f1f77bcf86cd799439011';
+
+    it('throws when product id is missing', async () => {
+      await expect(productService.fetchProductInventory()).rejects.toMatchObject({
+        message: 'Product id is required',
+        statusCode: 400,
+      });
+    });
+
+    it('throws not found when product does not exist', async () => {
+      repository.getProductUnitsById.mockResolvedValue(null);
+
+      await expect(productService.fetchProductInventory(productId)).rejects.toMatchObject({
+        message: 'Product not found',
+        statusCode: 404,
+      });
+    });
+
+    it('returns inventory by product id', async () => {
+      repository.getProductUnitsById.mockResolvedValue({
+        id: productId,
+        units: 7,
+      });
+
+      const result = await productService.fetchProductInventory(productId);
+
+      expect(repository.getProductUnitsById).toHaveBeenCalledWith(productId);
+      expect(result).toEqual({
+        product_id: productId,
+        units: 7,
+      });
+    });
+  });
+
   describe('removeProduct', () => {
     it('throws when id is missing', async () => {
       await expect(productService.removeProduct()).rejects.toMatchObject({ statusCode: 400 });

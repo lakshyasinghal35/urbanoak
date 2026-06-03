@@ -267,6 +267,23 @@ async function fetchProducts({ id, categoryIds, page, limit } = {}) {
   throw ApiError.badRequest('Product id or category_ids is required');
 }
 
+async function fetchProductInventory(productId) {
+  if (!productId) {
+    throw ApiError.badRequest('Product id is required');
+  }
+
+  const productInventory = await repository.getProductUnitsById(productId);
+
+  if (!productInventory) {
+    throw ApiError.notFound('Product not found');
+  }
+
+  return {
+    product_id: String(productInventory.id || productId),
+    units: productInventory.units,
+  };
+}
+
 async function removeProduct(id) {
   if (!id) {
     throw ApiError.badRequest('Product id is required');
@@ -297,11 +314,6 @@ async function updateProductInventory(productId, units) {
     throw ApiError.notFound('Product not found');
   }
 
-  await invalidateCatalogCaches({
-    productId,
-    categoryId: updatedProduct.category_id,
-  });
-
   return updatedProduct;
 }
 
@@ -316,11 +328,6 @@ async function decrementProductInventoryIfAvailable(productId, quantity) {
     return null;
   }
 
-  await invalidateCatalogCaches({
-    productId,
-    categoryId: updatedProduct.category_id,
-  });
-
   return updatedProduct;
 }
 
@@ -334,11 +341,6 @@ async function incrementProductInventory(productId, quantity) {
   if (!updatedProduct) {
     throw ApiError.notFound('Product not found');
   }
-
-  await invalidateCatalogCaches({
-    productId,
-    categoryId: updatedProduct.category_id,
-  });
 
   return updatedProduct;
 }
@@ -432,6 +434,7 @@ module.exports = {
   removeSection,
   saveProduct,
   fetchProducts,
+  fetchProductInventory,
   removeProduct,
   updateProductInventory,
   decrementProductInventoryIfAvailable,

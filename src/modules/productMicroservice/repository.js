@@ -245,6 +245,24 @@ async function getProductById(id) {
   return new Product(queries.toProduct(doc));
 }
 
+async function getProductUnitsById(id) {
+  if (!queries.isValidObjectId(id)) {
+    return null;
+  }
+
+  const doc = await ProductModel.findById(id)
+    .select({ units: 1 })
+    .lean();
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    units: doc.units,
+  };
+}
+
 async function getProducts({ offset = 0, limit = 20 } = {}) {
   const docs = await ProductModel.find()
     .skip(offset)
@@ -345,6 +363,7 @@ module.exports = {
   saveProduct,
   deleteProduct,
   getProductById,
+  getProductUnitsById,
   getProducts,
   getProductsByCategoryIds,
   updateProductUnits,

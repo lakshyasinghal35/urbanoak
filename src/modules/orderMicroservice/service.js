@@ -104,8 +104,8 @@ async function reserveInventoryForOrder(items) {
 
     if (!updatedProduct) {
       await rollbackInventory(reservedItems);
-      const product = await productRepository.getProductById(item.product_id);
-      const availableUnits = product ? product.units : 0;
+      const productInventory = await productRepository.getProductUnitsById(item.product_id);
+      const availableUnits = productInventory ? productInventory.units : 0;
       throw ApiError.conflict('Insufficient inventory', {
         shortages: [
           {

@@ -109,6 +109,11 @@ router.patch('/products/:id/inventory', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
+router.get('/products/:id/inventory', asyncHandler(async (req, res) => {
+  const data = await service.fetchProductInventory(req.params.id);
+  sendSuccess(res, data);
+}));
+
 router.get('/products', asyncHandler(async (req, res) => {
   const { id } = req.query;
   const categoryIds = parseCategoryIds(req.query.category_ids);
