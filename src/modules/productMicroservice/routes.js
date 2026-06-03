@@ -3,6 +3,7 @@ const router = express.Router();
 const { sendSuccess } = require('../../common/response');
 const asyncHandler = require('../../common/asyncHandler');
 const service = require('./service');
+const { requireAdmin } = require('../../common/middleware/auth');
 const {
   singleImageUploadMiddleware,
   parseCategoryIds,
@@ -10,12 +11,12 @@ const {
 
 //--------------------------------space routes--------------------------------
 
-router.post('/spaces', asyncHandler(async (req, res) => {
+router.post('/spaces', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveSpace(req.body);
   sendSuccess(res, data, 201);
 }));
 
-router.put('/spaces', asyncHandler(async (req, res) => {
+router.put('/spaces', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveSpace(req.body);
   sendSuccess(res, data);
 }));
@@ -31,19 +32,19 @@ router.get('/spaces/all', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
-router.delete('/spaces/:id', asyncHandler(async (req, res) => {
+router.delete('/spaces/:id', ...requireAdmin, asyncHandler(async (req, res) => {
   await service.removeSpace(req.params.id);
   sendSuccess(res, { deleted: true });
 }));
 
 //--------------------------------category routes--------------------------------
 
-router.post('/categories', asyncHandler(async (req, res) => {
+router.post('/categories', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveCategory(req.body);
   sendSuccess(res, data, 201);
 }));
 
-router.put('/categories', asyncHandler(async (req, res) => {
+router.put('/categories', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveCategory(req.body);
   sendSuccess(res, data);
 }));
@@ -59,19 +60,19 @@ router.get('/categories/all', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
-router.delete('/categories/:id', asyncHandler(async (req, res) => {
+router.delete('/categories/:id', ...requireAdmin, asyncHandler(async (req, res) => {
   await service.removeCategory(req.params.id);
   sendSuccess(res, { deleted: true });
 }));
 
 //--------------------------------section routes--------------------------------
 
-router.post('/sections', asyncHandler(async (req, res) => {
+router.post('/sections', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveSection(req.body);
   sendSuccess(res, data, 201);
 }));
 
-router.put('/sections', asyncHandler(async (req, res) => {
+router.put('/sections', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveSection(req.body);
   sendSuccess(res, data);
 }));
@@ -87,24 +88,24 @@ router.get('/sections/all', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
-router.delete('/sections/:id', asyncHandler(async (req, res) => {
+router.delete('/sections/:id', ...requireAdmin, asyncHandler(async (req, res) => {
   await service.removeSection(req.params.id);
   sendSuccess(res, { deleted: true });
 }));
 
 //--------------------------------product routes--------------------------------
 
-router.post('/products', asyncHandler(async (req, res) => {
+router.post('/products', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveProduct(req.body);
   sendSuccess(res, data, 201);
 }));
 
-router.put('/products', asyncHandler(async (req, res) => {
+router.put('/products', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.saveProduct(req.body);
   sendSuccess(res, data);
 }));
 
-router.patch('/products/:id/inventory', asyncHandler(async (req, res) => {
+router.patch('/products/:id/inventory', ...requireAdmin, asyncHandler(async (req, res) => {
   const data = await service.updateProductInventory(req.params.id, req.body.units);
   sendSuccess(res, data);
 }));
@@ -133,12 +134,12 @@ router.get('/products/list', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
-router.delete('/products/:id', asyncHandler(async (req, res) => {
+router.delete('/products/:id', ...requireAdmin, asyncHandler(async (req, res) => {
   await service.removeProduct(req.params.id);
   sendSuccess(res, { deleted: true });
 }));
 
-router.post('/products/images/upload', singleImageUploadMiddleware, asyncHandler(async (req, res) => {
+router.post('/products/images/upload', ...requireAdmin, singleImageUploadMiddleware, asyncHandler(async (req, res) => {
   const data = await service.uploadCatalogImage(req.file, req.body.product_id);
   sendSuccess(res, data, 201);
 }));
