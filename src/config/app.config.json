@@ -52,5 +52,23 @@
 			"order_events":"order_events"
 		}
 	},
+	"email":{
+		"enabled": false,
+		"provider": "smtp",
+		"defaults":{
+			"from":"UrbanOak <no-reply@urbanoak.com>",
+			"replyTo":""
+		},
+		"smtp":{
+			"host":"smtp.example.com",
+			"port":587,
+			"secure":false,
+			"pool":true,
+			"auth":{
+				"user":"",
+				"pass":""
+			}
+		}
+	},
 	"CACHE_ENABLED": true
 }
