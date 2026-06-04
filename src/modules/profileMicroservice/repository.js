@@ -67,6 +67,40 @@ async function getAddressesByUserId(user_id) {
 }
 
 
+//--------------------------------password reset--------------------------------
+
+async function updateUserPassword(id, passwordHash) {
+  await pool.execute(queries.updateUserPasswordQuery, [passwordHash, id]);
+  return getUserById(id);
+}
+
+async function createPasswordResetToken({ user_id, token_hash, expires_at }) {
+  const [result] = await pool.execute(queries.createPasswordResetTokenQuery, [
+    user_id,
+    token_hash,
+    expires_at,
+    new Date(),
+  ]);
+  return result.insertId;
+}
+
+async function getPasswordResetTokenByHash(token_hash) {
+  const [rows] = await pool.execute(queries.getPasswordResetTokenByHashQuery, [token_hash]);
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+  return rows[0];
+}
+
+async function markPasswordResetTokenUsed(id) {
+  await pool.execute(queries.markPasswordResetTokenUsedQuery, [new Date(), id]);
+}
+
+async function deleteUnusedPasswordResetTokens(user_id) {
+  await pool.execute(queries.deleteUnusedPasswordResetTokensQuery, [user_id]);
+}
+
+
 
 module.exports = {
   createUser,
@@ -75,4 +109,9 @@ module.exports = {
   getAllUsers,
   createAddress,
   getAddressesByUserId,
+  updateUserPassword,
+  createPasswordResetToken,
+  getPasswordResetTokenByHash,
+  markPasswordResetTokenUsed,
+  deleteUnusedPasswordResetTokens,
 };

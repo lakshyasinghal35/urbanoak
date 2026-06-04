@@ -35,6 +35,12 @@ function updateAdminParams(admin) {
   ];
 }
 
+const updateAdminPasswordQuery = `
+  UPDATE admin_users
+  SET password = ?, updated_at = ?
+  WHERE id = ?;
+`;
+
 const getAdminByIdQuery = `
   SELECT * FROM admin_users WHERE id = ?;
 `;
@@ -50,6 +56,7 @@ const getAllAdminsQuery = `
 module.exports = {
   createAdminQuery,
   updateAdminQuery,
+  updateAdminPasswordQuery,
   getAdminByIdQuery,
   getAdminByEmailQuery,
   getAllAdminsQuery,

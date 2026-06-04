@@ -11,6 +11,12 @@ router.post('/admin/login', asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 }));
 
+// POST /admin/change-password - Authenticated admin changes own password (old + new)
+router.post('/admin/change-password', ...requireAdmin, asyncHandler(async (req, res) => {
+  const data = await service.changePassword(req.admin.id, req.body);
+  sendSuccess(res, data);
+}));
+
 // POST /admins - Create a new admin user (superadmin only)
 router.post('/admins', ...requireSuperAdmin, asyncHandler(async (req, res) => {
   const data = await service.createAdmin(req.body, req.admin.id);

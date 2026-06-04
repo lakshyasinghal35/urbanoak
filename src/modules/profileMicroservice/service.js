@@ -1,8 +1,14 @@
 const bcrypt = require('bcryptjs');
 const userRepository = require('./repository');
 const { signToken } = require('../../common/jwt');
+const ApiError = require('../../common/apiError');
+const { emailService } = require('../../common/email');
+const { generateToken, hashToken } = require('../../common/secureToken');
+const config = require('../../config/app.config.json');
 
 const tokenBlacklist = new Set();
+
+const MIN_PASSWORD_LENGTH = (config.passwordReset && config.passwordReset.min_password_length) || 8;
 
 
 
@@ -105,6 +111,81 @@ function isTokenBlacklisted(token) {
 }
 
 
+//--------------------------------password reset (email link)--------------------------------
+
+function buildResetLink(token) {
+  const base = config.passwordReset && config.passwordReset.url_base;
+  if (!base) {
+    return null;
+  }
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token=${encodeURIComponent(token)}`;
+}
+
+// Step 1: user requests a reset. Always returns the same response whether or not
+// the email exists, to avoid leaking which emails are registered.
+async function requestPasswordReset(email) {
+  if (!email) {
+    throw ApiError.badRequest('Email is required');
+  }
+
+  const user = await userRepository.getUserByEmail(email);
+  if (user) {
+    // Keep only the latest token valid.
+    await userRepository.deleteUnusedPasswordResetTokens(user.id);
+
+    const token = generateToken();
+    const ttlMinutes = (config.passwordReset && config.passwordReset.token_ttl_minutes) || 60;
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+    await userRepository.createPasswordResetToken({
+      user_id: user.id,
+      token_hash: hashToken(token),
+      expires_at: expiresAt,
+    });
+
+    await emailService.send({
+      to: user.email,
+      template: 'resetPassword',
+      data: {
+        firstname: user.firstname,
+        resetUrl: buildResetLink(token) || token,
+        expiryMinutes: ttlMinutes,
+      },
+    });
+  }
+
+  return { message: 'If an account exists for that email, a password reset link has been sent.' };
+}
+
+// Step 2: user submits the token + a new password.
+async function resetPassword(token, newPassword) {
+  if (!token || !newPassword) {
+    throw ApiError.badRequest('Token and new password are required');
+  }
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw ApiError.badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+
+  const tokenRow = await userRepository.getPasswordResetTokenByHash(hashToken(token));
+  const isValid = tokenRow
+    && !tokenRow.used_at
+    && new Date(tokenRow.expires_at) > new Date();
+  if (!isValid) {
+    throw ApiError.badRequest('Invalid or expired reset token');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await userRepository.updateUserPassword(tokenRow.user_id, passwordHash);
+
+  // Single-use: consume this token and drop any other outstanding ones.
+  await userRepository.markPasswordResetTokenUsed(tokenRow.id);
+  await userRepository.deleteUnusedPasswordResetTokens(tokenRow.user_id);
+
+  return { message: 'Password has been reset. Please sign in with your new password.' };
+}
+
+
 
 //--------------------------------address save and fetch operations--------------------------------
 
@@ -132,6 +213,8 @@ module.exports = {
   loginUser,
   logoutUser,
   isTokenBlacklisted,
+  requestPasswordReset,
+  resetPassword,
   fetchUser,
   fetchAllUsers,
   saveAddress,

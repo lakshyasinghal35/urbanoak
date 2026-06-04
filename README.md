@@ -104,6 +104,35 @@ API routes are mounted under **`/api`** (profile, product, and order microservic
 
 Import the collection and local environment from **`postman/`** (see [postman/README.md](postman/README.md)).
 
+## Password reset
+
+Two distinct flows, by user type:
+
+**App users — reset via email link** (`profileMicroservice`):
+
+| Method | Path | Body | Purpose |
+|--------|------|------|---------|
+| POST | `/api/users/forgot-password` | `{ email }` | Generate a single-use token and email a reset link. Always returns a generic success message (no account enumeration). |
+| POST | `/api/users/reset-password` | `{ token, newPassword }` | Validate + consume the token and set the new password. |
+
+Tokens are random, **stored hashed** in the `password_reset_tokens` table, single-use, and expire after `passwordReset.token_ttl_minutes` (default 60). Requesting a new link invalidates any previous unused token. The reset email is sent through the shared email service (`src/common/email`) using the `resetPassword` template.
+
+**Admin users — change via old + new password** (`adminMicroservice`, authenticated):
+
+| Method | Path | Auth | Body | Purpose |
+|--------|------|------|------|---------|
+| POST | `/api/admin/change-password` | Bearer (admin JWT) | `{ oldPassword, newPassword }` | Verify the current password, then set a new one. |
+
+New passwords must be at least `admin.min_password_length` characters (default 8); the admin flow also requires the new password to differ from the current one. Allowed admin roles and the minimum password length live under the `admin` block in `src/config/app.config.json`.
+
+Reset-link settings live under `passwordReset` (`url_base`, `token_ttl_minutes`, `min_password_length`) in `src/config/app.config.json`. Email delivery is handled by the shared email service: set `EMAIL_ENABLED=true` and the `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` environment variables to send real mail; otherwise it falls back to the console transport and logs the message (handy for local dev — copy the token from the logged link).
+
+Apply the schema change before using the app-user flow:
+
+```bash
+mysql -h 127.0.0.1 -P 3306 -u root -proot urbanoak < scripts/db/migrations/2026_06_password_reset_tokens.sql
+```
+
 ## Configuration
 
 Database and server settings live in **`src/config/app.config.json`**. Update host, port, credentials, or `httpPort` there if your local setup differs from Docker defaults.

@@ -55,6 +55,31 @@ const getAddressesByUserIdQuery = `
   SELECT * FROM addresses WHERE user_id = ?;    
 `;
 
+//--------------------------------password reset--------------------------------
+
+const updateUserPasswordQuery = `
+  UPDATE users SET password = ? WHERE id = ?;
+`;
+
+const createPasswordResetTokenQuery = `
+  INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, created_at)
+  VALUES (?, ?, ?, ?);
+`;
+
+const getPasswordResetTokenByHashQuery = `
+  SELECT * FROM password_reset_tokens WHERE token_hash = ?;
+`;
+
+const markPasswordResetTokenUsedQuery = `
+  UPDATE password_reset_tokens SET used_at = ? WHERE id = ?;
+`;
+
+// Invalidate any other outstanding (unused) tokens for a user so only the most
+// recent request is ever valid.
+const deleteUnusedPasswordResetTokensQuery = `
+  DELETE FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL;
+`;
+
 module.exports = {
   createUserQuery,
   getUserByIdQuery,
@@ -62,6 +87,11 @@ module.exports = {
   getAllUsersQuery,
   createAddressQuery,
   getAddressesByUserIdQuery,
+  updateUserPasswordQuery,
+  createPasswordResetTokenQuery,
+  getPasswordResetTokenByHashQuery,
+  markPasswordResetTokenUsedQuery,
+  deleteUnusedPasswordResetTokensQuery,
   userParams,
   addressParams,
 };

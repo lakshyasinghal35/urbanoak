@@ -23,6 +23,18 @@ router.get('/users/all', asyncHandler(async (req, res) => {
     sendSuccess(res, data);
 }));
 
+// POST /users/forgot-password - Request a password reset email link
+router.post('/users/forgot-password', asyncHandler(async (req, res) => {
+    const data = await service.requestPasswordReset(req.body.email);
+    sendSuccess(res, data);
+}));
+
+// POST /users/reset-password - Reset the password using the emailed token
+router.post('/users/reset-password', asyncHandler(async (req, res) => {
+    const data = await service.resetPassword(req.body.token, req.body.newPassword);
+    sendSuccess(res, data);
+}));
+
 // POST /address - Create a new address
 router.post('/addresses', asyncHandler(async (req, res) => {
     const data = await service.saveAddress(req.body);

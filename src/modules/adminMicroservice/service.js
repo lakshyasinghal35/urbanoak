@@ -2,8 +2,10 @@ const bcrypt = require('bcryptjs');
 const adminRepository = require('./repository');
 const ApiError = require('../../common/apiError');
 const { signToken } = require('../../common/jwt');
+const config = require('../../config/app.config.json');
 
-const ALLOWED_ROLES = ['superadmin', 'admin'];
+const ALLOWED_ROLES = (config.admin && config.admin.allowed_roles) || ['superadmin', 'admin'];
+const MIN_PASSWORD_LENGTH = (config.admin && config.admin.min_password_length) || 8;
 
 function sanitizeAdmin(admin) {
   if (!admin) return null;
@@ -102,9 +104,38 @@ async function fetchAdmins() {
   return admins.map(sanitizeAdmin);
 }
 
+// Admins reset their own password by proving the current one (no email flow).
+async function changePassword(adminId, { oldPassword, newPassword } = {}) {
+  if (!oldPassword || !newPassword) {
+    throw ApiError.badRequest('oldPassword and newPassword are required');
+  }
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw ApiError.badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+  if (oldPassword === newPassword) {
+    throw ApiError.badRequest('New password must be different from the current password');
+  }
+
+  const admin = await adminRepository.getAdminById(adminId);
+  if (!admin || !admin.is_active) {
+    throw ApiError.unauthorized('Admin account not found or inactive');
+  }
+
+  const matches = await bcrypt.compare(oldPassword, admin.password);
+  if (!matches) {
+    throw ApiError.unauthorized('Current password is incorrect');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await adminRepository.updatePassword(adminId, passwordHash);
+
+  return { message: 'Password changed successfully' };
+}
+
 module.exports = {
   loginAdmin,
   createAdmin,
   updateAdmin,
   fetchAdmins,
+  changePassword,
 };
