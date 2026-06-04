@@ -28,6 +28,21 @@ CREATE TABLE addresses (
 );
 
 
+-- admin microservice
+CREATE TABLE admin_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('superadmin', 'admin') NOT NULL DEFAULT 'admin',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by INT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (created_by) REFERENCES admin_users(id)
+);
+
+
 -- product microservice
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -11,6 +11,10 @@
 	"isHttps":0,
 	"isSessionRequired":0,
 	"staticResourcePaths":["public"],
+	"jwt":{
+		"secret":"urbanoak-secret",
+		"expires_in":"1h"
+	},
 	"mySQL":{
 		"host":"127.0.0.1",
 		"port":3307,

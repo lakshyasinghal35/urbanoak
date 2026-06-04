@@ -1,9 +1,7 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const userRepository = require('./repository');
+const { signToken } = require('../../common/jwt');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'urbanoak-secret';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const tokenBlacklist = new Set();
 
 
@@ -85,11 +83,7 @@ async function loginUser({ email, password }) {
     throw new Error('Invalid email or password');
   }
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+  const token = signToken({ id: user.id, email: user.email });
 
   return {
     token,
