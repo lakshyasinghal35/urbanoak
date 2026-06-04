@@ -1,11 +1,11 @@
 const repository = require('../../../src/modules/orderMicroservice/repository');
-const messageProducer = require('../../../src/common/messageProducer');
+const messageProducer = require('../../../src/common/events/messageProducer');
 const productService = require('../../../src/modules/productMicroservice/service');
 const productRepository = require('../../../src/modules/productMicroservice/repository');
 const orderService = require('../../../src/modules/orderMicroservice/service');
 
 jest.mock('../../../src/modules/orderMicroservice/repository');
-jest.mock('../../../src/common/messageProducer', () => ({
+jest.mock('../../../src/common/events/messageProducer', () => ({
   pushMessage: jest.fn(),
 }));
 jest.mock('../../../src/modules/productMicroservice/service', () => ({

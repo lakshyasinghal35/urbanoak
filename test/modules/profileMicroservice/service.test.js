@@ -1,15 +1,18 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const messageProducer = require('../../../src/common/events/messageProducer');
 const userRepository = require('../../../src/modules/profileMicroservice/repository');
 const profileService = require('../../../src/modules/profileMicroservice/service');
 
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
 jest.mock('../../../src/modules/profileMicroservice/repository');
+jest.mock('../../../src/common/events/messageProducer', () => ({ pushMessage: jest.fn() }));
 
 describe('profileMicroservice/service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    messageProducer.pushMessage.mockResolvedValue(true);
   });
 
   describe('saveUser', () => {
@@ -65,6 +68,15 @@ describe('profileMicroservice/service', () => {
       });
       expect(result).not.toHaveProperty('id');
       expect(result).not.toHaveProperty('password');
+      expect(messageProducer.pushMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: 1,
+          payload: expect.objectContaining({
+            action: 'user.signed_up',
+            email: validUser.email,
+          }),
+        })
+      );
     });
   });
 

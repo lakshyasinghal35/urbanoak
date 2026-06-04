@@ -11,7 +11,11 @@ const KAFKA_BROKERS = Array.isArray(KAFKA_CONFIG.brokers) && KAFKA_CONFIG.broker
 let kafka = null;
 let producer = null;
 let connectPromise = null;
-let isConnected = false;
+let isProducerConnected = false;
+
+const consumers = new Map();
+const consumerConnectPromises = new Map();
+const consumerConnected = new Map();
 
 function isKafkaEnabled() {
   return KAFKA_ENABLED;
@@ -42,7 +46,7 @@ async function connectKafkaProducer() {
     return false;
   }
 
-  if (isConnected) {
+  if (isProducerConnected) {
     return true;
   }
 
@@ -54,7 +58,7 @@ async function connectKafkaProducer() {
   if (!connectPromise) {
     connectPromise = client.connect()
       .then(() => {
-        isConnected = true;
+        isProducerConnected = true;
       })
       .finally(() => {
         connectPromise = null;
@@ -62,13 +66,64 @@ async function connectKafkaProducer() {
   }
 
   await connectPromise;
-  return isConnected;
+  return isProducerConnected;
+}
+
+function getKafkaConsumer(groupId) {
+  if (!isKafkaEnabled()) {
+    return null;
+  }
+
+  if (!kafka) {
+    kafka = new Kafka({
+      clientId: KAFKA_CLIENT_ID,
+      brokers: KAFKA_BROKERS,
+      logLevel: logLevel.NOTHING,
+    });
+  }
+
+  if (!consumers.has(groupId)) {
+    consumers.set(groupId, kafka.consumer({ groupId }));
+  }
+
+  return consumers.get(groupId);
+}
+
+async function connectKafkaConsumer(groupId) {
+  if (!isKafkaEnabled()) {
+    return false;
+  }
+
+  if (consumerConnected.get(groupId)) {
+    return true;
+  }
+
+  const client = getKafkaConsumer(groupId);
+  if (!client) {
+    return false;
+  }
+
+  if (!consumerConnectPromises.has(groupId)) {
+    const promise = client.connect()
+      .then(() => {
+        consumerConnected.set(groupId, true);
+      })
+      .finally(() => {
+        consumerConnectPromises.delete(groupId);
+      });
+    consumerConnectPromises.set(groupId, promise);
+  }
+
+  await consumerConnectPromises.get(groupId);
+  return consumerConnected.get(groupId) === true;
 }
 
 module.exports = {
   isKafkaEnabled,
   getKafkaProducer,
   connectKafkaProducer,
+  getKafkaConsumer,
+  connectKafkaConsumer,
   KAFKA_BROKERS,
   KAFKA_CLIENT_ID,
 };

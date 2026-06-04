@@ -7,6 +7,7 @@ const { sendError } = require('./common/response');
 const { ensureSearchIndex } = require('./modules/searchMicroservice/indexManager');
 const { startSearchIndexWorker } = require('./modules/searchMicroservice/index.worker');
 const { connectKafkaProducer, isKafkaEnabled } = require('./config/kafka');
+const { startNotificationWorkers } = require('./modules/notificationMicroservice');
 
 const app = express();
 
@@ -27,7 +28,7 @@ function start(){
 	addErrorHandler();
 	handleUnidentifiedRoutes();
 	setupSearchIndex();
-	setupOrderEventPublisher();
+	setupKafka();
 	listen();
 }
 
@@ -161,13 +162,17 @@ function setupSearchIndex(){
 	startSearchIndexWorker();
 }
 
-function setupOrderEventPublisher(){
+function setupKafka(){
 	if(!isKafkaEnabled()){
 		return;
 	}
 
 	connectKafkaProducer().catch(error => {
-		console.error('[order-events] kafka producer connection failed:', error.message);
+		console.error('[kafka] producer connection failed:', error.message);
+	});
+
+	startNotificationWorkers().catch(error => {
+		console.error('[kafka] notification workers failed to start:', error.message);
 	});
 }
 

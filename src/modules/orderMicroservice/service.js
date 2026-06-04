@@ -1,17 +1,15 @@
 const repository = require('./repository');
 const ApiError = require('../../common/apiError');
-const { pushMessage } = require('../../common/messageProducer');
-const config = require('../../config/app.config.json');
+const { pushMessage } = require('../../common/events/messageProducer');
+const {
+  ORDER_EVENTS,
+  getOrderEventsTopic,
+} = require('../../common/events/eventTypes');
 const { getPayload } = require('./model/order');
 const productService = require('../productMicroservice/service');
 const productRepository = require('../productMicroservice/repository');
 
-const KAFKA_CONFIG = config.kafka || {};
-const ORDER_EVENTS_TOPIC = KAFKA_CONFIG.topic?.order_events || 'order_events';
-const ORDER_EVENT_TYPES = {
-  CREATED: 'order.created',
-  UPDATED: 'order.updated',
-};
+const ORDER_EVENTS_TOPIC = getOrderEventsTopic();
 
 //--------------------------------order--------------------------------
 
@@ -145,8 +143,8 @@ async function rollbackInventory(reservedItems) {
 async function publishOrderEventSafely(eventType, order) {
   try {
     const normalizedEventType = eventType === 'created'
-      ? ORDER_EVENT_TYPES.CREATED
-      : ORDER_EVENT_TYPES.UPDATED;
+      ? ORDER_EVENTS.CREATED
+      : ORDER_EVENTS.UPDATED;
 
     await pushMessage({
       topic: ORDER_EVENTS_TOPIC,

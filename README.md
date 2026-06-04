@@ -161,12 +161,14 @@ Search endpoints:
 - `GET /api/products/search?q=<text>&category_ids=1,2&page=1&limit=20`
 - `GET /api/products/suggest?q=<prefix>&limit=10`
 
-Order event publishing is configured under `kafka`:
+Kafka event publishing and notification consumers are configured under `kafka`:
 
 - `enabled`
 - `client_id`
 - `brokers`
-- `topic.order_events`
+- `topic.user_profile_events` — sign-up and password-reset completion
+- `topic.order_events` — order created/updated
+- `consumer.user_profile` / `consumer.order` — notification worker group ids and topics
 
 Reindex existing products into Elasticsearch:
 

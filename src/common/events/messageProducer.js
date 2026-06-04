@@ -2,7 +2,7 @@ const {
   isKafkaEnabled,
   connectKafkaProducer,
   getKafkaProducer,
-} = require('../config/kafka');
+} = require('../../config/kafka');
 
 async function sendKafkaMessage({ topic, message }) {
   if (!isKafkaEnabled()) {

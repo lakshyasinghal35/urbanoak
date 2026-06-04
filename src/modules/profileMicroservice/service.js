@@ -3,8 +3,15 @@ const userRepository = require('./repository');
 const { signToken } = require('../../common/jwt');
 const ApiError = require('../../common/apiError');
 const { emailService } = require('../../common/email');
+const { pushMessage } = require('../../common/events/messageProducer');
+const {
+  USER_PROFILE_EVENTS,
+  getUserProfileEventsTopic,
+} = require('../../common/events/eventTypes');
 const { generateToken, hashToken } = require('../../common/secureToken');
 const config = require('../../config/app.config.json');
+
+const USER_PROFILE_EVENTS_TOPIC = getUserProfileEventsTopic();
 
 const tokenBlacklist = new Set();
 
@@ -43,6 +50,19 @@ async function saveUser(user) {
     ...user,
     password: hashedPassword,
     sign_up_date: new Date(),
+  });
+
+  await publishUserProfileEventSafely({
+    action: USER_PROFILE_EVENTS.SIGNED_UP,
+    key: createdUser.id,
+    payload: {
+      id: createdUser.id,
+      email: createdUser.email,
+      firstname: createdUser.firstname,
+      lastname: createdUser.lastname,
+      action: USER_PROFILE_EVENTS.SIGNED_UP,
+    },
+    context: { userId: String(createdUser.id) },
   });
 
   return sanitizeUser(createdUser);
@@ -175,6 +195,11 @@ async function resetPassword(token, newPassword) {
     throw ApiError.badRequest('Invalid or expired reset token');
   }
 
+  const user = await userRepository.getUserById(tokenRow.user_id);
+  if (!user) {
+    throw ApiError.badRequest('Invalid or expired reset token');
+  }
+
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await userRepository.updateUserPassword(tokenRow.user_id, passwordHash);
 
@@ -182,10 +207,42 @@ async function resetPassword(token, newPassword) {
   await userRepository.markPasswordResetTokenUsed(tokenRow.id);
   await userRepository.deleteUnusedPasswordResetTokens(tokenRow.user_id);
 
+  await publishUserProfileEventSafely({
+    action: USER_PROFILE_EVENTS.PASSWORD_RESET_COMPLETED,
+    key: user.id,
+    payload: {
+      user_id: user.id,
+      email: user.email,
+      firstname: user.firstname,
+      action: USER_PROFILE_EVENTS.PASSWORD_RESET_COMPLETED,
+    },
+    context: { userId: String(user.id) },
+  });
+
   return { message: 'Password has been reset. Please sign in with your new password.' };
 }
 
 
+
+async function publishUserProfileEventSafely({ action, key, payload, context = {} }) {
+  try {
+    await pushMessage({
+      topic: USER_PROFILE_EVENTS_TOPIC,
+      key,
+      payload,
+      context: {
+        action,
+        ...context,
+      },
+    });
+  } catch (error) {
+    console.error('[user-profile-events] publish failed in service layer', {
+      action,
+      ...context,
+      error: error.message,
+    });
+  }
+}
 
 //--------------------------------address save and fetch operations--------------------------------
 

@@ -58,7 +58,18 @@
 		"client_id":"urbanoak-api",
 		"brokers":["127.0.0.1:9092"],
 		"topic":{
+			"user_profile_events":"user_profile_events",
 			"order_events":"order_events"
+		},
+		"consumer":{
+			"user_profile":{
+				"group_id":"urbanoak-notification-profile",
+				"topics":["user_profile_events"]
+			},
+			"order":{
+				"group_id":"urbanoak-notification-order",
+				"topics":["order_events"]
+			}
 		}
 	},
 	"email":{
