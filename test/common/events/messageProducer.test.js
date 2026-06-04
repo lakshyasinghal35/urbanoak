@@ -1,13 +1,13 @@
-jest.mock('../../src/config/kafka', () => ({
+jest.mock('../../../src/config/kafka', () => ({
   isKafkaEnabled: jest.fn(() => true),
   connectKafkaProducer: jest.fn(),
   getKafkaProducer: jest.fn(),
 }));
 
-const kafkaConfig = require('../../src/config/kafka');
-const messageProducer = require('../../src/common/messageProducer');
+const kafkaConfig = require('../../../src/config/kafka');
+const messageProducer = require('../../../src/common/events/messageProducer');
 
-describe('common/messageProducer', () => {
+describe('common/events/messageProducer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     kafkaConfig.isKafkaEnabled.mockReturnValue(true);

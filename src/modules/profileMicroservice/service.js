@@ -2,9 +2,15 @@ const bcrypt = require('bcryptjs');
 const userRepository = require('./repository');
 const { signToken } = require('../../common/jwt');
 const ApiError = require('../../common/apiError');
-const { emailService } = require('../../common/email');
+const { pushMessage } = require('../../common/events/messageProducer');
+const {
+  USER_PROFILE_EVENTS,
+  getUserProfileEventsTopic,
+} = require('../../common/events/eventTypes');
 const { generateToken, hashToken } = require('../../common/secureToken');
 const config = require('../../config/app.config.json');
+
+const USER_PROFILE_EVENTS_TOPIC = getUserProfileEventsTopic();
 
 const tokenBlacklist = new Set();
 
@@ -43,6 +49,19 @@ async function saveUser(user) {
     ...user,
     password: hashedPassword,
     sign_up_date: new Date(),
+  });
+
+  await publishUserProfileEventSafely({
+    action: USER_PROFILE_EVENTS.SIGNED_UP,
+    key: createdUser.id,
+    payload: {
+      id: createdUser.id,
+      email: createdUser.email,
+      firstname: createdUser.firstname,
+      lastname: createdUser.lastname,
+      action: USER_PROFILE_EVENTS.SIGNED_UP,
+    },
+    context: { userId: String(createdUser.id) },
   });
 
   return sanitizeUser(createdUser);
@@ -144,14 +163,18 @@ async function requestPasswordReset(email) {
       expires_at: expiresAt,
     });
 
-    await emailService.send({
-      to: user.email,
-      template: 'resetPassword',
-      data: {
+    await publishUserProfileEventSafely({
+      action: USER_PROFILE_EVENTS.PASSWORD_RESET_REQUESTED,
+      key: user.id,
+      payload: {
+        user_id: user.id,
+        email: user.email,
         firstname: user.firstname,
         resetUrl: buildResetLink(token) || token,
         expiryMinutes: ttlMinutes,
+        action: USER_PROFILE_EVENTS.PASSWORD_RESET_REQUESTED,
       },
+      context: { userId: String(user.id) },
     });
   }
 
@@ -186,6 +209,26 @@ async function resetPassword(token, newPassword) {
 }
 
 
+
+async function publishUserProfileEventSafely({ action, key, payload, context = {} }) {
+  try {
+    await pushMessage({
+      topic: USER_PROFILE_EVENTS_TOPIC,
+      key,
+      payload,
+      context: {
+        action,
+        ...context,
+      },
+    });
+  } catch (error) {
+    console.error('[user-profile-events] publish failed in service layer', {
+      action,
+      ...context,
+      error: error.message,
+    });
+  }
+}
 
 //--------------------------------address save and fetch operations--------------------------------
 
