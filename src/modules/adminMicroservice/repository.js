@@ -15,6 +15,11 @@ async function updateAdmin(admin) {
   return getAdminById(admin.id);
 }
 
+async function updatePassword(id, passwordHash) {
+  await pool.execute(queries.updateAdminPasswordQuery, [passwordHash, new Date(), id]);
+  return getAdminById(id);
+}
+
 async function getAdminById(id) {
   const [rows] = await pool.execute(queries.getAdminByIdQuery, [id]);
   if (!rows || rows.length === 0) {
@@ -39,6 +44,7 @@ async function getAllAdmins() {
 module.exports = {
   createAdmin,
   updateAdmin,
+  updatePassword,
   getAdminById,
   getAdminByEmail,
   getAllAdmins,

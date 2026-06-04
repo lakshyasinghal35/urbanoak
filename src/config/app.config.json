@@ -15,6 +15,15 @@
 		"secret":"urbanoak-secret",
 		"expires_in":"1h"
 	},
+	"admin":{
+		"allowed_roles":["superadmin","admin"],
+		"min_password_length":8
+	},
+	"passwordReset":{
+		"url_base":"http://localhost:3000/reset-password",
+		"token_ttl_minutes":60,
+		"min_password_length":8
+	},
 	"mySQL":{
 		"host":"127.0.0.1",
 		"port":3307,

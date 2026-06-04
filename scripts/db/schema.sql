@@ -28,6 +28,22 @@ CREATE TABLE addresses (
 );
 
 
+-- App-user password reset: single-use, time-limited tokens.
+-- Only the SHA-256 hash of the token is stored, so a DB leak does not expose
+-- usable reset links.
+CREATE TABLE password_reset_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY uq_token_hash (token_hash),
+    INDEX idx_prt_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
 -- admin microservice
 CREATE TABLE admin_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
