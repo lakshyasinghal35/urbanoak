@@ -1,11 +1,13 @@
 const bcrypt = require('bcryptjs');
 const userRepository = require('../../../src/modules/profileMicroservice/repository');
+const { emailService } = require('../../../src/common/email');
 const messageProducer = require('../../../src/common/events/messageProducer');
 const secureToken = require('../../../src/common/secureToken');
 const profileService = require('../../../src/modules/profileMicroservice/service');
 
 jest.mock('bcryptjs');
 jest.mock('../../../src/modules/profileMicroservice/repository');
+jest.mock('../../../src/common/email', () => ({ emailService: { send: jest.fn() } }));
 jest.mock('../../../src/common/events/messageProducer', () => ({ pushMessage: jest.fn() }));
 jest.mock('../../../src/common/secureToken');
 
@@ -14,6 +16,7 @@ describe('profileMicroservice/service password reset', () => {
     jest.clearAllMocks();
     secureToken.generateToken.mockReturnValue('raw-token');
     secureToken.hashToken.mockReturnValue('hashed-token');
+    emailService.send.mockResolvedValue({});
     messageProducer.pushMessage.mockResolvedValue(true);
   });
 
@@ -29,10 +32,11 @@ describe('profileMicroservice/service password reset', () => {
 
       expect(result.message).toMatch(/If an account exists/i);
       expect(userRepository.createPasswordResetToken).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
       expect(messageProducer.pushMessage).not.toHaveBeenCalled();
     });
 
-    it('stores a hashed token and publishes reset event when user exists', async () => {
+    it('stores a hashed token and emails the user when they exist', async () => {
       userRepository.getUserByEmail.mockResolvedValue({
         id: 7,
         email: 'jane@example.com',
@@ -45,15 +49,10 @@ describe('profileMicroservice/service password reset', () => {
       expect(userRepository.createPasswordResetToken).toHaveBeenCalledWith(
         expect.objectContaining({ user_id: 7, token_hash: 'hashed-token', expires_at: expect.any(Date) })
       );
-      expect(messageProducer.pushMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: 7,
-          payload: expect.objectContaining({
-            email: 'jane@example.com',
-            action: 'user.password_reset_requested',
-          }),
-        })
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'jane@example.com', template: 'resetPassword' })
       );
+      expect(messageProducer.pushMessage).not.toHaveBeenCalled();
       // Never leaks whether the account existed.
       expect(result.message).toMatch(/If an account exists/i);
     });
@@ -89,9 +88,14 @@ describe('profileMicroservice/service password reset', () => {
       await expect(profileService.resetPassword('tok', 'newsecret1')).rejects.toThrow('Invalid or expired');
     });
 
-    it('updates the password and consumes the token when valid', async () => {
+    it('updates the password, consumes the token, and publishes completion event when valid', async () => {
       userRepository.getPasswordResetTokenByHash.mockResolvedValue({
         id: 9, user_id: 7, used_at: null, expires_at: new Date(Date.now() + 100000),
+      });
+      userRepository.getUserById.mockResolvedValue({
+        id: 7,
+        email: 'jane@example.com',
+        firstname: 'Jane',
       });
       bcrypt.hash.mockResolvedValue('new-hash');
 
@@ -102,6 +106,16 @@ describe('profileMicroservice/service password reset', () => {
       expect(userRepository.updateUserPassword).toHaveBeenCalledWith(7, 'new-hash');
       expect(userRepository.markPasswordResetTokenUsed).toHaveBeenCalledWith(9);
       expect(userRepository.deleteUnusedPasswordResetTokens).toHaveBeenCalledWith(7);
+      expect(messageProducer.pushMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: 7,
+          payload: expect.objectContaining({
+            email: 'jane@example.com',
+            action: 'user.password_reset_completed',
+          }),
+        })
+      );
+      expect(emailService.send).not.toHaveBeenCalled();
       expect(result.message).toMatch(/reset/i);
     });
   });

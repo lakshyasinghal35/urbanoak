@@ -5,7 +5,7 @@ const KAFKA_TOPICS = KAFKA_CONFIG.topic || {};
 
 const USER_PROFILE_EVENTS = {
   SIGNED_UP: 'user.signed_up',
-  PASSWORD_RESET_REQUESTED: 'user.password_reset_requested',
+  PASSWORD_RESET_COMPLETED: 'user.password_reset_completed',
 };
 
 const ORDER_EVENTS = {

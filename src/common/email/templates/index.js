@@ -1,6 +1,7 @@
 const welcome = require('./welcome.template');
 const orderConfirmation = require('./orderConfirmation.template');
 const resetPassword = require('./resetPassword.template');
+const passwordResetComplete = require('./passwordResetComplete.template');
 const pendingOrder = require('./pendingOrder.template');
 
 /**
@@ -14,6 +15,7 @@ const templates = {
   welcome,
   orderConfirmation,
   resetPassword,
+  passwordResetComplete,
   pendingOrder,
 };
 

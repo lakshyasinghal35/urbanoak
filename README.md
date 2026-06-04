@@ -166,7 +166,7 @@ Kafka event publishing and notification consumers are configured under `kafka`:
 - `enabled`
 - `client_id`
 - `brokers`
-- `topic.user_profile_events` — sign-up and password-reset requests
+- `topic.user_profile_events` — sign-up and password-reset completion
 - `topic.order_events` — order created/updated
 - `consumer.user_profile` / `consumer.order` — notification worker group ids and topics
 

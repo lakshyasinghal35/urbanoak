@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const userRepository = require('./repository');
 const { signToken } = require('../../common/jwt');
 const ApiError = require('../../common/apiError');
+const { emailService } = require('../../common/email');
 const { pushMessage } = require('../../common/events/messageProducer');
 const {
   USER_PROFILE_EVENTS,
@@ -163,18 +164,14 @@ async function requestPasswordReset(email) {
       expires_at: expiresAt,
     });
 
-    await publishUserProfileEventSafely({
-      action: USER_PROFILE_EVENTS.PASSWORD_RESET_REQUESTED,
-      key: user.id,
-      payload: {
-        user_id: user.id,
-        email: user.email,
+    await emailService.send({
+      to: user.email,
+      template: 'resetPassword',
+      data: {
         firstname: user.firstname,
         resetUrl: buildResetLink(token) || token,
         expiryMinutes: ttlMinutes,
-        action: USER_PROFILE_EVENTS.PASSWORD_RESET_REQUESTED,
       },
-      context: { userId: String(user.id) },
     });
   }
 
@@ -198,12 +195,29 @@ async function resetPassword(token, newPassword) {
     throw ApiError.badRequest('Invalid or expired reset token');
   }
 
+  const user = await userRepository.getUserById(tokenRow.user_id);
+  if (!user) {
+    throw ApiError.badRequest('Invalid or expired reset token');
+  }
+
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await userRepository.updateUserPassword(tokenRow.user_id, passwordHash);
 
   // Single-use: consume this token and drop any other outstanding ones.
   await userRepository.markPasswordResetTokenUsed(tokenRow.id);
   await userRepository.deleteUnusedPasswordResetTokens(tokenRow.user_id);
+
+  await publishUserProfileEventSafely({
+    action: USER_PROFILE_EVENTS.PASSWORD_RESET_COMPLETED,
+    key: user.id,
+    payload: {
+      user_id: user.id,
+      email: user.email,
+      firstname: user.firstname,
+      action: USER_PROFILE_EVENTS.PASSWORD_RESET_COMPLETED,
+    },
+    context: { userId: String(user.id) },
+  });
 
   return { message: 'Password has been reset. Please sign in with your new password.' };
 }

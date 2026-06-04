@@ -1,10 +1,10 @@
 const { USER_PROFILE_EVENTS } = require('../../../common/events/eventTypes');
 const { handleUserSignedUp } = require('../handlers/userSignedUp.handler');
-const { handlePasswordResetRequested } = require('../handlers/passwordResetRequested.handler');
+const { handlePasswordResetCompleted } = require('../handlers/passwordResetCompleted.handler');
 
 const ACTION_HANDLERS = {
   [USER_PROFILE_EVENTS.SIGNED_UP]: handleUserSignedUp,
-  [USER_PROFILE_EVENTS.PASSWORD_RESET_REQUESTED]: handlePasswordResetRequested,
+  [USER_PROFILE_EVENTS.PASSWORD_RESET_COMPLETED]: handlePasswordResetCompleted,
 };
 
 async function processUserProfileEvent(payload) {
