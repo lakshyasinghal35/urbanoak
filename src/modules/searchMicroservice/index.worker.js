@@ -1,4 +1,4 @@
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 const { isSearchEnabled } = require('../../config/elasticsearch');
 const { SEARCH_INDEX_NAME } = require('./service');
 const searchRepository = require('./repository');

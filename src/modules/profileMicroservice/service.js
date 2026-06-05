@@ -9,7 +9,7 @@ const {
   getUserProfileEventsTopic,
 } = require('../../common/events/eventTypes');
 const { generateToken, hashToken } = require('../../common/secureToken');
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 
 const USER_PROFILE_EVENTS_TOPIC = getUserProfileEventsTopic();
 

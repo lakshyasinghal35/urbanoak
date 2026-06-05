@@ -1,12 +1,10 @@
 const { Kafka, logLevel } = require('kafkajs');
-const config = require('./app.config.json');
+const config = require('.');
 
 const KAFKA_CONFIG = config.kafka || {};
 const KAFKA_ENABLED = KAFKA_CONFIG.enabled === true;
-const KAFKA_CLIENT_ID = KAFKA_CONFIG.client_id || 'urbanoak-api';
-const KAFKA_BROKERS = Array.isArray(KAFKA_CONFIG.brokers) && KAFKA_CONFIG.brokers.length
-  ? KAFKA_CONFIG.brokers
-  : ['127.0.0.1:9092'];
+const KAFKA_CLIENT_ID = KAFKA_CONFIG.client_id;
+const KAFKA_BROKERS = KAFKA_CONFIG.brokers || [];
 
 let kafka = null;
 let producer = null;

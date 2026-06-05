@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "dev": "APP_ENV=local nodemon src/app.js",
     "reindex:products": "node scripts/search/reindex-products.js",
     "test": "jest --config test/jest.config.js"
   },

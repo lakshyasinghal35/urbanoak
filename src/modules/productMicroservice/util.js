@@ -1,6 +1,7 @@
 const cache = require('../../common/cache');
 const multer = require('multer');
 const ApiError = require('../../common/apiError');
+const config = require('../../config');
 
 const CACHE_TTL_SECONDS = {
   CATALOG: 1800,
@@ -13,7 +14,7 @@ const { buildCacheKey } = cache;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: Number(process.env.S3_MAX_IMAGE_SIZE_BYTES || 10 * 1024 * 1024),
+    fileSize: config.s3.max_image_size_bytes,
   },
 });
 

@@ -1,12 +1,12 @@
 const path = require('path');
 const crypto = require('crypto');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const appConfig = require('../config/app.config.json');
+const config = require('../config');
 
-const s3Config = appConfig.s3 || {};
-const DEFAULT_REGION = s3Config.region || 'ap-south-1';
+const s3Config = config.s3 || {};
+const DEFAULT_REGION = s3Config.region;
 const DEFAULT_BUCKET = s3Config.bucket_name;
-const DEFAULT_PREFIX = s3Config.catalog_prefix || 'catalog';
+const DEFAULT_PREFIX = s3Config.catalog_prefix;
 const DEFAULT_PUBLIC_BASE_URL = s3Config.public_base_url;
 
 let s3Client = null;
@@ -43,7 +43,7 @@ function buildPublicUrl({ bucket, region, key }) {
  * Here is how this function works:
  * - It receives a `buffer` (the raw image data), `mimeType`, `originalName` of the file, 
  *   and an optional `prefix` (folder name/path in the bucket).
- * - It determines the S3 bucket and region from `src/config/app.config.json`.
+ * - It determines the S3 bucket and region from the central app config.
  * - If a prefix is provided, it uses that for organizing images into subfolders within the bucket;
  *   otherwise, it uses a default prefix (e.g., "catalog").
  * - It sanitizes the filename and constructs a unique S3 object key. The key looks like:
@@ -63,7 +63,7 @@ async function uploadImageToS3({ buffer, mimeType, originalName, prefix }) {
   const folderPrefix = (prefix || DEFAULT_PREFIX).replace(/^\/+|\/+$/g, '');
 
   if (!bucket) {
-    throw new Error('s3.bucket_name is not configured in app.config.json');
+    throw new Error('s3.bucket_name is not configured (set S3_BUCKET_NAME or app.config.json)');
   }
 
   // Sanitize original filename and get safe base name and file extension

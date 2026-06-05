@@ -2,10 +2,10 @@ const bcrypt = require('bcryptjs');
 const adminRepository = require('./repository');
 const ApiError = require('../../common/apiError');
 const { signToken } = require('../../common/jwt');
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 
-const ALLOWED_ROLES = (config.admin && config.admin.allowed_roles) || ['superadmin', 'admin'];
-const MIN_PASSWORD_LENGTH = (config.admin && config.admin.min_password_length) || 8;
+const ALLOWED_ROLES = config.admin.allowed_roles;
+const MIN_PASSWORD_LENGTH = config.admin.min_password_length;
 
 function sanitizeAdmin(admin) {
   if (!admin) return null;

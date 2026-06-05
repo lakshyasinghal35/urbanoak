@@ -1,4 +1,4 @@
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 const { isKafkaEnabled } = require('../../config/kafka');
 const { runConsumer } = require('../../common/events/messageConsumer');
 const { processUserProfileEvent } = require('./processors/userProfile.processor');
@@ -19,11 +19,11 @@ async function startNotificationWorkers() {
   const profileConfig = CONSUMER_CONFIG.user_profile || {};
   const orderConfig = CONSUMER_CONFIG.order || {};
 
-  const profileGroupId = profileConfig.group_id || 'urbanoak-notification-profile';
-  const profileTopics = profileConfig.topics || [KAFKA_CONFIG.topic?.user_profile_events || 'user_profile_events'];
+  const profileGroupId = profileConfig.group_id;
+  const profileTopics = profileConfig.topics;
 
-  const orderGroupId = orderConfig.group_id || 'urbanoak-notification-order';
-  const orderTopics = orderConfig.topics || [KAFKA_CONFIG.topic?.order_events || 'order_events'];
+  const orderGroupId = orderConfig.group_id;
+  const orderTopics = orderConfig.topics;
 
   await Promise.all([
     runConsumer({
