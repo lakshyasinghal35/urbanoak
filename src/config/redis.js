@@ -1,4 +1,4 @@
-const config = require('./app.config');
+const config = require('.');
 
 let redisModule = null;
 try {
@@ -7,9 +7,9 @@ try {
   redisModule = null;
 }
 
-const CACHE_DISABLED = String(config.CACHE_ENABLED ?? process.env.CACHE_ENABLED ?? 'true').toLowerCase() === 'false';
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-const isTestEnv = process.env.NODE_ENV === 'test';
+const CACHE_DISABLED = config.CACHE_ENABLED === false;
+const REDIS_URL = config.REDIS_URL;
+const isTestEnv = config.nodeEnv === 'test';
 
 let client = null;
 let connectPromise = null;

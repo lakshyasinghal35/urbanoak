@@ -1,9 +1,9 @@
 const ApiError = require('../../common/apiError');
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 const repository = require('./repository');
 
 const SEARCH_CONFIG = config.elasticsearch || {};
-const SEARCH_INDEX_NAME = SEARCH_CONFIG.index_name || 'urbanoak_products';
+const SEARCH_INDEX_NAME = SEARCH_CONFIG.index_name;
 
 function normalizeCategoryIds(categoryIds) {
   if (!Array.isArray(categoryIds)) {

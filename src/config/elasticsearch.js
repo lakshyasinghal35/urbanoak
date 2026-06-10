@@ -1,15 +1,13 @@
 const { Client } = require('@elastic/elasticsearch');
-const config = require('./app.config.json');
+const config = require('.');
 
 const SEARCH_CONFIG = config.elasticsearch || {};
-const SEARCH_ENABLED = SEARCH_CONFIG.enabled !== false;
-const ELASTICSEARCH_NODE = process.env.ELASTICSEARCH_URL || SEARCH_CONFIG.node || 'http://127.0.0.1:9200';
+const ELASTICSEARCH_NODE = SEARCH_CONFIG.node;
+const isSearchEnabled = () => SEARCH_CONFIG.enabled !== false;
 
 let client = null;
 
-function isSearchEnabled() {
-  return SEARCH_ENABLED;
-}
+
 
 function elasticsearchClient() {
   if (!isSearchEnabled()) {
@@ -25,6 +23,5 @@ function elasticsearchClient() {
 
 module.exports = {
   elasticsearchClient,
-  isSearchEnabled,
-  ELASTICSEARCH_NODE,
+  isSearchEnabled
 };

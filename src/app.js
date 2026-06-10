@@ -1,9 +1,7 @@
 const path = require("path");
 
-//const propertyDao = require("./database/mysql/propertyDao.js");
-
 global.appRoot = path.resolve(__dirname);
-global.config = require("./config/app.config.json");
+global.config = require("./config");
 
 require("./config/db");
 const server = require("./server.js");

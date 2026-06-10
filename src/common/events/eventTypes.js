@@ -1,4 +1,4 @@
-const config = require('../../config/app.config.json');
+const config = require('../../config');
 
 const KAFKA_CONFIG = config.kafka || {};
 const KAFKA_TOPICS = KAFKA_CONFIG.topic || {};
@@ -14,11 +14,11 @@ const ORDER_EVENTS = {
 };
 
 function getUserProfileEventsTopic() {
-  return KAFKA_TOPICS.user_profile_events || 'user_profile_events';
+  return KAFKA_TOPICS.user_profile_events;
 }
 
 function getOrderEventsTopic() {
-  return KAFKA_TOPICS.order_events || 'order_events';
+  return KAFKA_TOPICS.order_events;
 }
 
 module.exports = {
