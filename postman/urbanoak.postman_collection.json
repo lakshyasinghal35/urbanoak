@@ -1426,24 +1426,10 @@
     },
     {
       "name": "Admin",
-      "description": "Admin authentication and self-service",
+      "description": "Admin authentication, user management, and self-service",
       "item": [
         {
           "name": "Admin login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json && json.data && json.data.token) {",
-                  "  pm.collectionVariables.set('adminToken', json.data.token);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1473,6 +1459,118 @@
               }
             },
             "description": "Authenticates an admin and stores the returned JWT into the `adminToken` collection variable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json && json.data && json.data.token) {",
+                  "  pm.collectionVariables.set('adminToken', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List admins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admins"
+              ]
+            },
+            "description": "Lists all admin users. Requires any authenticated admin. Run `Admin login` first."
+          },
+          "response": []
+        },
+        {
+          "name": "Create admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Admin\",\n  \"email\": \"new.admin@example.com\",\n  \"password\": \"admin12345\",\n  \"role\": \"admin\",\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates a new admin. Requires superadmin role. Allowed roles: superadmin, admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Update admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 2,\n  \"name\": \"Updated Admin\",\n  \"role\": \"admin\",\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Updates an existing admin. Requires superadmin role. Password is optional."
           },
           "response": []
         },

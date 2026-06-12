@@ -52,7 +52,7 @@ async function saveUser(user) {
     sign_up_date: new Date(),
   });
 
-  await publishUserProfileEventSafely({
+  publishUserProfileEventSafely({
     action: USER_PROFILE_EVENTS.SIGNED_UP,
     key: createdUser.id,
     payload: {

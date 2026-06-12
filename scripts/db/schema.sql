@@ -88,6 +88,8 @@ CREATE TABLE carts (
 CREATE TABLE cart_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cart_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL
+    user_id INT NOT NULL,
+    product_id VARCHAR(24) NOT NULL,
+    quantity INT NOT NULL,
+    UNIQUE KEY uq_cart_items_user_product (user_id, product_id)
 );
