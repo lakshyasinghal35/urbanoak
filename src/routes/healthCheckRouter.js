@@ -5,7 +5,12 @@ router.get('/', (req, res) => {
   res.json({
     name: 'urbanoak',
     status: 'ok',
-    api: '/api',
+  });
+});
+
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
   });
 });
 

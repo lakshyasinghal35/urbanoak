@@ -15,7 +15,23 @@
       "value": ""
     },
     {
+      "key": "userToken",
+      "value": ""
+    },
+    {
       "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "cartId",
+      "value": "1"
+    },
+    {
+      "key": "orderId",
       "value": ""
     }
   ],
@@ -25,18 +41,39 @@
       "description": "Server status",
       "item": [
         {
+          "name": "Health check (root)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api"
+              ]
+            },
+            "description": "Returns app name and status."
+          },
+          "response": []
+        },
+        {
           "name": "Health check",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/",
+              "raw": "{{baseUrl}}/api/health",
               "host": [
                 "{{baseUrl}}"
               ],
-              "path": []
+              "path": [
+                "api",
+                "health"
+              ]
             },
-            "description": "Returns app name, status, and API base path."
+            "description": "Returns `{ status: \"ok\" }`."
           },
           "response": []
         }
@@ -46,6 +83,86 @@
       "name": "Profile",
       "description": "Users and addresses (MySQL)",
       "item": [
+        {
+          "name": "User login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Authenticates a user and stores the returned JWT into the `userToken` collection variable. Run before authenticated profile/order requests."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json && json.data && json.data.token) {",
+                  "  pm.collectionVariables.set('userToken', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{userToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Revokes the current user JWT. Clears `userToken` on the client after a successful response."
+          },
+          "response": []
+        },
         {
           "name": "Create user",
           "request": {
@@ -156,6 +273,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
               }
             ],
             "url": {
@@ -176,7 +297,8 @@
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "Requires authenticated user. Run `User login` first."
           },
           "response": []
         },
@@ -184,7 +306,12 @@
           "name": "Get addresses by user",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/addresses/{{userId}}",
               "host": [
@@ -195,7 +322,8 @@
                 "addresses",
                 "{{userId}}"
               ]
-            }
+            },
+            "description": "Requires authenticated user. Run `User login` first."
           },
           "response": []
         },
@@ -285,6 +413,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -305,7 +437,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -317,6 +450,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -337,7 +474,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -412,7 +550,12 @@
               "name": "Delete space",
               "request": {
                 "method": "DELETE",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/spaces/1",
                   "host": [
@@ -423,7 +566,8 @@
                     "spaces",
                     "1"
                   ]
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             }
@@ -441,6 +585,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -461,7 +609,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -473,6 +622,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -493,7 +646,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -568,7 +722,12 @@
               "name": "Delete category",
               "request": {
                 "method": "DELETE",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/categories/1",
                   "host": [
@@ -579,7 +738,8 @@
                     "categories",
                     "1"
                   ]
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             }
@@ -597,6 +757,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -617,7 +781,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -629,6 +794,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -649,7 +818,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -724,7 +894,12 @@
               "name": "Delete section",
               "request": {
                 "method": "DELETE",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/sections/1",
                   "host": [
@@ -735,7 +910,8 @@
                     "sections",
                     "1"
                   ]
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             }
@@ -749,7 +925,12 @@
               "name": "Upload product image",
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/products/images/upload",
                   "host": [
@@ -779,7 +960,7 @@
                     }
                   ]
                 },
-                "description": "Uploads image to S3, appends URL into product.images, and returns updated images metadata."
+                "description": "Requires admin JWT. Uploads image to S3, appends URL into product.images, and returns updated images metadata. Run `Admin login` first."
               },
               "response": []
             },
@@ -791,6 +972,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -811,7 +996,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             },
@@ -823,6 +1009,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
                   }
                 ],
                 "url": {
@@ -843,7 +1033,68 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
+              },
+              "response": []
+            },
+            {
+              "name": "Update product inventory",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/REPLACE_WITH_MONGO_PRODUCT_ID/inventory",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "REPLACE_WITH_MONGO_PRODUCT_ID",
+                    "inventory"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"units\": 25\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Requires admin JWT. Updates stock units for a product."
+              },
+              "response": []
+            },
+            {
+              "name": "Get product inventory",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/REPLACE_WITH_MONGO_PRODUCT_ID/inventory",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "REPLACE_WITH_MONGO_PRODUCT_ID",
+                    "inventory"
+                  ]
+                },
+                "description": "Public read of current stock units."
               },
               "response": []
             },
@@ -994,7 +1245,12 @@
               "name": "Delete product",
               "request": {
                 "method": "DELETE",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/products/REPLACE_WITH_MONGO_PRODUCT_ID",
                   "host": [
@@ -1005,7 +1261,8 @@
                     "products",
                     "REPLACE_WITH_MONGO_PRODUCT_ID"
                   ]
-                }
+                },
+                "description": "Requires admin JWT. Run `Admin login` first."
               },
               "response": []
             }
@@ -1029,6 +1286,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
                   }
                 ],
                 "url": {
@@ -1050,7 +1311,7 @@
                     }
                   }
                 },
-                "description": "Order ids are MongoDB ObjectIds on update/delete."
+                "description": "Requires authenticated user. Order ids are MongoDB ObjectIds on update/delete. Run `User login` first."
               },
               "response": []
             },
@@ -1090,7 +1351,12 @@
               "name": "Get order by id",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/orders",
                   "host": [
@@ -1106,7 +1372,8 @@
                       "value": "{{orderId}}"
                     }
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1114,7 +1381,12 @@
               "name": "Get orders by user",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/orders",
                   "host": [
@@ -1130,7 +1402,8 @@
                       "value": "{{userId}}"
                     }
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1272,6 +1545,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
                   }
                 ],
                 "url": {
@@ -1293,7 +1570,7 @@
                     }
                   }
                 },
-                "description": "Creates cart for user if missing."
+                "description": "Requires authenticated user. Creates cart for user if missing. Run `User login` first."
               },
               "response": []
             },
@@ -1305,6 +1582,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
                   }
                 ],
                 "url": {
@@ -1325,7 +1606,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1333,7 +1615,12 @@
               "name": "Get cart item by id",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/cart-items",
                   "host": [
@@ -1349,7 +1636,8 @@
                       "value": "1"
                     }
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1357,7 +1645,12 @@
               "name": "Get cart items by user",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/cart-items",
                   "host": [
@@ -1373,7 +1666,8 @@
                       "value": "{{userId}}"
                     }
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1381,7 +1675,12 @@
               "name": "Get cart items by cart",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/cart-items",
                   "host": [
@@ -1397,7 +1696,8 @@
                       "value": "{{cartId}}"
                     }
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             },
@@ -1405,7 +1705,12 @@
               "name": "Delete cart item",
               "request": {
                 "method": "DELETE",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/cart-items/1",
                   "host": [
@@ -1416,7 +1721,8 @@
                     "cart-items",
                     "1"
                   ]
-                }
+                },
+                "description": "Requires authenticated user. Run `User login` first."
               },
               "response": []
             }
@@ -1426,7 +1732,7 @@
     },
     {
       "name": "Admin",
-      "description": "Admin authentication, user management, and self-service",
+      "description": "Admin authentication, user management, and self-service (`/api/admin/*`)",
       "item": [
         {
           "name": "Admin login",
@@ -1487,13 +1793,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admins",
+              "raw": "{{baseUrl}}/api/admin",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "admins"
+                "admin"
               ]
             },
             "description": "Lists all admin users. Requires any authenticated admin. Run `Admin login` first."
@@ -1515,13 +1821,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admins",
+              "raw": "{{baseUrl}}/api/admin",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "admins"
+                "admin"
               ]
             },
             "body": {
@@ -1533,7 +1839,7 @@
                 }
               }
             },
-            "description": "Creates a new admin. Requires superadmin role. Allowed roles: superadmin, admin."
+            "description": "Creates a new admin at `POST /api/admin`. Requires superadmin role. Allowed roles: superadmin, admin."
           },
           "response": []
         },
@@ -1552,13 +1858,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admins",
+              "raw": "{{baseUrl}}/api/admin",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "admins"
+                "admin"
               ]
             },
             "body": {
@@ -1570,7 +1876,7 @@
                 }
               }
             },
-            "description": "Updates an existing admin. Requires superadmin role. Password is optional."
+            "description": "Updates an existing admin at `PUT /api/admin`. Requires superadmin role. Password is optional."
           },
           "response": []
         },

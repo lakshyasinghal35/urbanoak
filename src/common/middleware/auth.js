@@ -16,7 +16,7 @@ function authenticate(req, res, next) {
   }
 
   try {
-    req.admin = verifyToken(token);
+    req.user = verifyToken(token);
     return next();
   } catch (err) {
     return next(ApiError.unauthorized('Invalid or expired token'));
@@ -25,7 +25,7 @@ function authenticate(req, res, next) {
 
 function authorize(...allowedRoles) {
   return (req, res, next) => {
-    const role = req.admin && req.admin.role;
+    const role = req.user && req.user.role;
     if (!role || !allowedRoles.includes(role)) {
       return next(ApiError.forbidden('You do not have permission to perform this action'));
     }

@@ -45,9 +45,19 @@ function requestHeaders(method, opts = {}) {
     headers.push(...headersJson());
   }
   if (opts.auth) {
-    headers.push({ key: 'Authorization', value: 'Bearer {{adminToken}}' });
+    const tokenVar = opts.auth === 'user' ? 'userToken' : 'adminToken';
+    headers.push({ key: 'Authorization', value: `Bearer {{${tokenVar}}}` });
   }
   return headers;
+}
+
+function saveTokenScript(variableName) {
+  return [
+    'var json = pm.response.json();',
+    'if (json && json.data && json.data.token) {',
+    `  pm.collectionVariables.set('${variableName}', json.data.token);`,
+    '}',
+  ];
 }
 
 function request(name, method, path, opts = {}) {
@@ -98,16 +108,34 @@ const collection = {
   variable: [
     { key: 'baseUrl', value: 'http://localhost:9000' },
     { key: 'adminToken', value: '' },
+    { key: 'userToken', value: '' },
     { key: 'resetToken', value: '' },
+    { key: 'userId', value: '1' },
+    { key: 'cartId', value: '1' },
+    { key: 'orderId', value: '' },
   ],
   item: [
     folder('Health', 'Server status', [
-      request('Health check', 'GET', '/', {
+      request('Health check (root)', 'GET', '/api/', {
         json: false,
-        description: 'Returns app name, status, and API base path.',
+        description: 'Returns app name and status.',
+      }),
+      request('Health check', 'GET', '/api/health', {
+        json: false,
+        description: 'Returns `{ status: "ok" }`.',
       }),
     ]),
     folder('Profile', 'Users and addresses (MySQL)', [
+      request('User login', 'POST', '/api/login', {
+        body: { email: 'jane.doe@example.com', password: 'secret123' },
+        description:
+          'Authenticates a user and stores the returned JWT into the `userToken` collection variable. Run before authenticated profile/order requests.',
+        testScript: saveTokenScript('userToken'),
+      }),
+      request('User logout', 'POST', '/api/logout', {
+        body: { token: '{{userToken}}' },
+        description: 'Revokes the current user JWT. Clears `userToken` on the client after a successful response.',
+      }),
       request('Create user', 'POST', '/api/users', {
         body: {
           email: 'jane.doe@example.com',
@@ -128,6 +156,7 @@ const collection = {
       }),
       request('Get all users', 'GET', '/api/users/all'),
       request('Create address', 'POST', '/api/addresses', {
+        auth: 'user',
         body: {
           user_id: 1,
           mobile: '9876543210',
@@ -139,8 +168,13 @@ const collection = {
           country: 'India',
           pincode: '400001',
         },
+        description: 'Requires authenticated user. Run `User login` first.',
       }),
-      request('Get addresses by user', 'GET', '/api/addresses/{{userId}}'),
+      request('Get addresses by user', 'GET', '/api/addresses/{{userId}}', {
+        auth: 'user',
+        json: false,
+        description: 'Requires authenticated user. Run `User login` first.',
+      }),
       request('Forgot password (request reset link)', 'POST', '/api/users/forgot-password', {
         body: { email: 'jane.doe@example.com' },
         description:
@@ -154,8 +188,16 @@ const collection = {
     ]),
     folder('Product', 'Catalog: spaces, categories, sections, products', [
       folder('Spaces', null, [
-        request('Create space', 'POST', '/api/spaces', { body: { name: 'Living Room' } }),
-        request('Update space', 'PUT', '/api/spaces', { body: { id: 1, name: 'Living Room' } }),
+        request('Create space', 'POST', '/api/spaces', {
+          auth: true,
+          body: { name: 'Living Room' },
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
+        request('Update space', 'PUT', '/api/spaces', {
+          auth: true,
+          body: { id: 1, name: 'Living Room' },
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
         request('Get space by id', 'GET', '/api/spaces', {
           query: [{ key: 'id', value: '1' }],
         }),
@@ -163,11 +205,23 @@ const collection = {
           query: [{ key: 'name', value: 'Living Room' }],
         }),
         request('Get all spaces', 'GET', '/api/spaces/all'),
-        request('Delete space', 'DELETE', '/api/spaces/1'),
+        request('Delete space', 'DELETE', '/api/spaces/1', {
+          auth: true,
+          json: false,
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
       ]),
       folder('Categories', null, [
-        request('Create category', 'POST', '/api/categories', { body: { name: 'Sofas' } }),
-        request('Update category', 'PUT', '/api/categories', { body: { id: 1, name: 'Sofas' } }),
+        request('Create category', 'POST', '/api/categories', {
+          auth: true,
+          body: { name: 'Sofas' },
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
+        request('Update category', 'PUT', '/api/categories', {
+          auth: true,
+          body: { id: 1, name: 'Sofas' },
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
         request('Get category by id', 'GET', '/api/categories', {
           query: [{ key: 'id', value: '1' }],
         }),
@@ -175,14 +229,22 @@ const collection = {
           query: [{ key: 'name', value: 'Sofas' }],
         }),
         request('Get all categories', 'GET', '/api/categories/all'),
-        request('Delete category', 'DELETE', '/api/categories/1'),
+        request('Delete category', 'DELETE', '/api/categories/1', {
+          auth: true,
+          json: false,
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
       ]),
       folder('Sections', null, [
         request('Create section', 'POST', '/api/sections', {
+          auth: true,
           body: { space_id: 1, category_id: 1 },
+          description: 'Requires admin JWT. Run `Admin login` first.',
         }),
         request('Update section', 'PUT', '/api/sections', {
+          auth: true,
           body: { id: 1, space_id: 1, category_id: 1 },
+          description: 'Requires admin JWT. Run `Admin login` first.',
         }),
         request('Get section by id', 'GET', '/api/sections', {
           query: [{ key: 'id', value: '1' }],
@@ -191,10 +253,15 @@ const collection = {
           query: [{ key: 'space_id', value: '1' }],
         }),
         request('Get all sections', 'GET', '/api/sections/all'),
-        request('Delete section', 'DELETE', '/api/sections/1'),
+        request('Delete section', 'DELETE', '/api/sections/1', {
+          auth: true,
+          json: false,
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
       ]),
       folder('Products', null, [
         request('Upload product image', 'POST', '/api/products/images/upload', {
+          auth: true,
           json: false,
           formdata: [
             {
@@ -210,9 +277,11 @@ const collection = {
               description: 'Pick an image file from your local machine',
             },
           ],
-          description: 'Uploads image to S3, appends URL into product.images, and returns updated images metadata.',
+          description:
+            'Requires admin JWT. Uploads image to S3, appends URL into product.images, and returns updated images metadata. Run `Admin login` first.',
         }),
         request('Create product', 'POST', '/api/products', {
+          auth: true,
           body: {
             title: 'Oak Study Desk',
             category_id: 1,
@@ -225,8 +294,10 @@ const collection = {
             details: 'Solid oak desk',
             units: 50,
           },
+          description: 'Requires admin JWT. Run `Admin login` first.',
         }),
         request('Update product', 'PUT', '/api/products', {
+          auth: true,
           body: {
             id: 'REPLACE_WITH_MONGO_PRODUCT_ID',
             title: 'Oak Study Desk',
@@ -234,6 +305,16 @@ const collection = {
             mrp: 14000,
             discount: 15,
           },
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
+        request('Update product inventory', 'PATCH', '/api/products/REPLACE_WITH_MONGO_PRODUCT_ID/inventory', {
+          auth: true,
+          body: { units: 25 },
+          description: 'Requires admin JWT. Updates stock units for a product.',
+        }),
+        request('Get product inventory', 'GET', '/api/products/REPLACE_WITH_MONGO_PRODUCT_ID/inventory', {
+          json: false,
+          description: 'Public read of current stock units.',
         }),
         request('Get product by id', 'GET', '/api/products', {
           query: [{ key: 'id', value: 'REPLACE_WITH_MONGO_PRODUCT_ID' }],
@@ -261,12 +342,17 @@ const collection = {
             { key: 'limit', value: '10' },
           ],
         }),
-        request('Delete product', 'DELETE', '/api/products/REPLACE_WITH_MONGO_PRODUCT_ID'),
+        request('Delete product', 'DELETE', '/api/products/REPLACE_WITH_MONGO_PRODUCT_ID', {
+          auth: true,
+          json: false,
+          description: 'Requires admin JWT. Run `Admin login` first.',
+        }),
       ]),
     ]),
     folder('Order', 'Orders, carts, cart items (MongoDB + MySQL carts)', [
       folder('Orders', null, [
         request('Create order', 'POST', '/api/orders', {
+          auth: 'user',
           body: {
             user_id: 1,
             items: [{ product_id: 'REPLACE_WITH_MONGO_PRODUCT_ID', quantity: 1, price: 13500 }],
@@ -282,7 +368,8 @@ const collection = {
             total_amount: 13500,
             status: 'pending',
           },
-          description: 'Order ids are MongoDB ObjectIds on update/delete.',
+          description:
+            'Requires authenticated user. Order ids are MongoDB ObjectIds on update/delete. Run `User login` first.',
         }),
         request('Update order', 'PUT', '/api/orders', {
           body: {
@@ -296,10 +383,14 @@ const collection = {
           },
         }),
         request('Get order by id', 'GET', '/api/orders', {
+          auth: 'user',
           query: [{ key: 'id', value: '{{orderId}}' }],
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
         request('Get orders by user', 'GET', '/api/orders', {
+          auth: 'user',
           query: [{ key: 'user_id', value: '{{userId}}' }],
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
         request('Delete order', 'DELETE', '/api/orders/{{orderId}}'),
       ]),
@@ -315,14 +406,16 @@ const collection = {
       ]),
       folder('Cart items', null, [
         request('Create cart item', 'POST', '/api/cart-items', {
+          auth: 'user',
           body: {
             user_id: 1,
             product_id: 'REPLACE_WITH_MONGO_PRODUCT_ID',
             quantity: 1,
           },
-          description: 'Creates cart for user if missing.',
+          description: 'Requires authenticated user. Creates cart for user if missing. Run `User login` first.',
         }),
         request('Update cart item', 'PUT', '/api/cart-items', {
+          auth: 'user',
           body: {
             id: 1,
             user_id: 1,
@@ -330,37 +423,43 @@ const collection = {
             product_id: 'REPLACE_WITH_MONGO_PRODUCT_ID',
             quantity: 2,
           },
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
         request('Get cart item by id', 'GET', '/api/cart-items', {
+          auth: 'user',
           query: [{ key: 'id', value: '1' }],
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
         request('Get cart items by user', 'GET', '/api/cart-items', {
+          auth: 'user',
           query: [{ key: 'user_id', value: '{{userId}}' }],
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
         request('Get cart items by cart', 'GET', '/api/cart-items', {
+          auth: 'user',
           query: [{ key: 'cart_id', value: '{{cartId}}' }],
+          description: 'Requires authenticated user. Run `User login` first.',
         }),
-        request('Delete cart item', 'DELETE', '/api/cart-items/1'),
+        request('Delete cart item', 'DELETE', '/api/cart-items/1', {
+          auth: 'user',
+          json: false,
+          description: 'Requires authenticated user. Run `User login` first.',
+        }),
       ]),
     ]),
-    folder('Admin', 'Admin authentication, user management, and self-service', [
+    folder('Admin', 'Admin authentication, user management, and self-service (`/api/admin/*`)', [
       request('Admin login', 'POST', '/api/admin/login', {
         body: { email: 'admin@example.com', password: 'admin123' },
         description:
           'Authenticates an admin and stores the returned JWT into the `adminToken` collection variable.',
-        testScript: [
-          'var json = pm.response.json();',
-          'if (json && json.data && json.data.token) {',
-          "  pm.collectionVariables.set('adminToken', json.data.token);",
-          '}',
-        ],
+        testScript: saveTokenScript('adminToken'),
       }),
-      request('List admins', 'GET', '/api/admins', {
+      request('List admins', 'GET', '/api/admin', {
         auth: true,
         json: false,
         description: 'Lists all admin users. Requires any authenticated admin. Run `Admin login` first.',
       }),
-      request('Create admin', 'POST', '/api/admins', {
+      request('Create admin', 'POST', '/api/admin', {
         auth: true,
         body: {
           name: 'New Admin',
@@ -370,9 +469,9 @@ const collection = {
           is_active: true,
         },
         description:
-          'Creates a new admin. Requires superadmin role. Allowed roles: superadmin, admin.',
+          'Creates a new admin at `POST /api/admin`. Requires superadmin role. Allowed roles: superadmin, admin.',
       }),
-      request('Update admin', 'PUT', '/api/admins', {
+      request('Update admin', 'PUT', '/api/admin', {
         auth: true,
         body: {
           id: 2,
@@ -381,7 +480,7 @@ const collection = {
           is_active: true,
         },
         description:
-          'Updates an existing admin. Requires superadmin role. Password is optional.',
+          'Updates an existing admin at `PUT /api/admin`. Requires superadmin role. Password is optional.',
       }),
       request('Admin change password (old + new)', 'POST', '/api/admin/change-password', {
         auth: true,
