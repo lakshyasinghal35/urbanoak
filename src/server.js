@@ -3,6 +3,7 @@ const https = require("https");
 const fs = require('fs');
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
 const { sendError } = require('./common/response');
 const { ensureSearchIndex } = require('./modules/searchMicroservice/indexManager');
 const { startSearchIndexWorker } = require('./modules/searchMicroservice/index.worker');
@@ -151,11 +152,9 @@ function addRequestInfoLogger() {
 	app.use((req, res, next) => {
 		var url = req.originalUrl;
 		var method = req.method;
-		var ip = req.ip;
-		var body = req.body;
-		var query = req.query;
-		var params = req.params;
-		var cookies = req.cookies;
+		var body = JSON.stringify(req.body);
+		var query = JSON.stringify(req.query);
+		var params = JSON.stringify(req.params);
 		
 		var requestInfo = `URL: ${url}, Method: ${method}, Body: ${body}, Query: ${query}, Params: ${params}`;
 		console.log(requestInfo);

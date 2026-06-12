@@ -109,7 +109,7 @@ async function loginUser({ email, password }) {
     throw new Error('Invalid email or password');
   }
 
-  const token = signToken({ id: user.id, email: user.email });
+  const token = signToken({ id: user.id, email: user.email, role: 'user' });
 
   return {
     token,

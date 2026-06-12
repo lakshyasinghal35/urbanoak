@@ -8,10 +8,10 @@ const adminRouter = require('../modules/adminMicroservice/routes');
 const healthCheckRouter = require('./healthCheckRouter');
 
 module.exports = {
+  healthCheckRouter,
   profileRouter,
   productRouter,
   orderRouter,
   searchRouter,
   adminRouter,
-  healthCheckRouter,
 };
