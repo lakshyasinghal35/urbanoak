@@ -3,6 +3,7 @@ const https = require("https");
 const fs = require('fs');
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
 const { sendError } = require('./common/response');
 const { ensureSearchIndex } = require('./modules/searchMicroservice/indexManager');
 const { startSearchIndexWorker } = require('./modules/searchMicroservice/index.worker');
@@ -10,23 +11,18 @@ const { connectKafkaProducer, isKafkaEnabled } = require('./config/kafka');
 const { startNotificationWorkers } = require('./modules/notificationMicroservice');
 
 const app = express();
-
 const routers = require("./routes/index");
-const enums = require("./models/enums/enums");
-const STATUS_CODES = enums.ERROR_CODES;
 
-const noSessionUrls = [{url:"/",method:"GET"},{url:"/api/login",method:"POST"},{url:"/api/users",method:"PUT"}];
 
 
 //the order of the events is very important and must not be changed if lacking expertise in express framework
 function start(){
-	configure();
-	addStaticResources();
-	addSessionValidator();
-	addSecurityHeaders();
+	configureRequestParsing();
+	addSecurity();
+	addRequestInfoLogger();
 	addRouters();
 	addErrorHandler();
-	handleUnidentifiedRoutes();
+	addResponseInfoLogger();
 	setupSearchIndex();
 	setupKafka();
 	listen();
@@ -64,7 +60,7 @@ function listenOnHttp(app){
 	});
 }
 
-function configure(){
+function configureRequestParsing(){
 	app.use(express.json());
 	app.use(express.urlencoded({ extended: true }));
 	app.use(cookieParser());
@@ -73,86 +69,32 @@ function configure(){
 }
 
 
-function addSecurityHeaders(){
+function addSecurity(){
 	app.disable('x-powered-by');
-	app.use(function(req,res,next){
-		//cross site scripting header
-		res.set('X-XSS-Protection','1; mode=block');
-		//browser sniffing protection
-		res.set('X-Frame-Options',"SAMEORIGIN");
-		//no sniffing of mime types
-		res.set("X-Content-Type-Options","nosniff");
-		next();
-	});
-	//app.use(helmet());
-}
-
-function addSessionValidator(){
-	app.use(function(req,res,next){
-		const url = req.originalUrl;
-		const method = req.method;
-		const session = req.session || {};
-		const isAjax = req.xhr;
-		const isSessionRequired = config.isSessionRequired;
-		/*check if session exists by checking whether the user object is set in session
-		The user object will only be set if the user has looged in*/
-		if(isSessionRequired && !session.user){   //session doesn't exist
-			if(isNoSessionUrl(url,method)){   //the url and method type don't need an existing session
-				next();
-			}
-			else{   //the url needs an existing session
-				if(isAjax){   //if it is an ajax request we will send a json response with session expired status code
-					res.json({success:false,statusCode:STATUS_CODES.SESSION_EXPIRED,errorCode:-1});
-				}
-				else{    //else we will send an appropriate html page to address the situation
-					res.sendFile(path.join(appRoot +'/public/pages/unauthorized_access.html'));
-				}
-			}
-		}
-		else{    //session exists
-			next();
-		}
-
-		
-	});
-}
-
-function isNoSessionUrl(url,method){
-	var i=0,len=noSessionUrls.length;
-	var noSessionUrl;
-	for(;i<len;i++){
-		noSessionUrl = noSessionUrls[i];
-		if(url==noSessionUrl.url && method==noSessionUrl.method){
-			return true;
-		}
-	}
-	return false;
+	//app.use(setupSecurityHeaders);
+	app.use(helmet());
 }
 
 
 
-
-
-/*get all static resource paths and add them with the path static
-all the static resources will be available from /static path. Example => http://localhost:8070/static/login.js */
-function addStaticResources(){
-	const paths = config.staticResourcePaths || [];
-	for(var i=0,l=paths.length;i<l;i++){
-		app.use('/static', express.static(path.join(appRoot, paths[i])));
-	}
-	//app.use('/',express.static("."));
-}
 
 function addRouters(){
 	//the order is important here as the static router should come at end. You must not disturb the order.
 	for(var key in routers){
-		if(key!="staticRouter"){
-			app.use('/api',routers[key]);
-		}
+		app.use('/api',routers[key]);
 	}
+	
 	//the static router must come at the end or else it will create havoc on routes
-	app.use('/',routers.staticRouter);
+	//app.use('/',routers.staticRouter);
+
+	//all the unidentified routed will be handled here
+	app.all("*",function(req,res){
+		res.status(400).json({success:false});
+	});
 }
+
+
+
 
 
 function setupSearchIndex(){
@@ -161,6 +103,9 @@ function setupSearchIndex(){
 	});
 	startSearchIndexWorker();
 }
+
+
+
 
 function setupKafka(){
 	if(!isKafkaEnabled()){
@@ -189,21 +134,8 @@ function addErrorHandler() {
 }
 
 
-/*all the unidentified routed will be handled here
-If the request is ajax type, json response will be send otherwise url_error page will be displayed on client side*/
-function handleUnidentifiedRoutes(){
-	app.all("*",function(req,res){
-		const isAjax = req.xhr;
-		if(isAjax){
-			res.status(400).json({success:false,statusCode:0});
-		}
-		else{
-			res.sendFile(path.join(appRoot +'/public/pages/url_error.html'));
-		}
-	});
-}
 
-//
+//hhtps certifcates and keys for setting up https server
 function getHttpsKeys(){
 	const key = fs.readFileSync(config.https.keyPath);
 	const cert = fs.readFileSync(config.https.certPath);
@@ -216,6 +148,30 @@ function getHttpsKeys(){
 }
 
 
+function addRequestInfoLogger() {
+	app.use((req, res, next) => {
+		var url = req.originalUrl;
+		var method = req.method;
+		var body = JSON.stringify(req.body);
+		var query = JSON.stringify(req.query);
+		var params = JSON.stringify(req.params);
+		
+		var requestInfo = `URL: ${url}, Method: ${method}, Body: ${body}, Query: ${query}, Params: ${params}`;
+		console.log(requestInfo);
+		next();
+	});
+}
+
+
+function addResponseInfoLogger() {
+	app.use((req, res, next) => {
+		var statusCode = res.statusCode;
+		var data = res.data;
+		var responseInfo = `Status Code: ${statusCode}, Data: ${data}`;
+		console.log(responseInfo);
+		next();
+	});
+}
 
 module.exports = {start};
 

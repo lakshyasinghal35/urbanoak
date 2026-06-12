@@ -21,7 +21,7 @@ const MIN_PASSWORD_LENGTH = (config.passwordReset && config.passwordReset.min_pa
 
 function sanitizeUser(user) {
   if (!user) return null;
-  const { id, password, ...safeData } = user;
+  const { password, ...safeData } = user;
   return safeData;
 }
 
@@ -109,7 +109,7 @@ async function loginUser({ email, password }) {
     throw new Error('Invalid email or password');
   }
 
-  const token = signToken({ id: user.id, email: user.email });
+  const token = signToken({ id: user.id, email: user.email, role: 'user' });
 
   return {
     token,
@@ -117,6 +117,7 @@ async function loginUser({ email, password }) {
   };
 }
 
+//TODO: Implement proper logout logic
 function logoutUser(token) {
   if (!token) {
     throw new Error('Token is required for logout');
