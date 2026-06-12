@@ -35,15 +35,25 @@ function url(path, query = []) {
   return item;
 }
 
-function request(name, method, path, opts = {}) {
-  const shouldUseJsonHeaders =
+function requestHeaders(method, opts = {}) {
+  const headers = [];
+  if (
     opts.json !== false &&
     opts.formdata === undefined &&
-    ['POST', 'PUT', 'PATCH'].includes(method);
+    ['POST', 'PUT', 'PATCH'].includes(method)
+  ) {
+    headers.push(...headersJson());
+  }
+  if (opts.auth) {
+    headers.push({ key: 'Authorization', value: 'Bearer {{adminToken}}' });
+  }
+  return headers;
+}
 
+function request(name, method, path, opts = {}) {
   const req = {
     method,
-    header: shouldUseJsonHeaders ? headersJson() : [],
+    header: requestHeaders(method, opts),
     url: typeof path === 'string' ? url(path, opts.query) : path,
   };
 
@@ -60,7 +70,17 @@ function request(name, method, path, opts = {}) {
   if (opts.description) {
     req.description = opts.description;
   }
-  return { name, request: req, response: [] };
+
+  const item = { name, request: req, response: [] };
+  if (opts.testScript) {
+    item.event = [
+      {
+        listen: 'test',
+        script: { type: 'text/javascript', exec: opts.testScript },
+      },
+    ];
+  }
+  return item;
 }
 
 function folder(name, description, items) {
@@ -75,7 +95,11 @@ const collection = {
       'E-commerce furniture store API (Express). Import with environment `urbanoak — local`. Start server: `npm run dev` (port 9000).',
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
-  variable: [{ key: 'baseUrl', value: 'http://localhost:9000' }],
+  variable: [
+    { key: 'baseUrl', value: 'http://localhost:9000' },
+    { key: 'adminToken', value: '' },
+    { key: 'resetToken', value: '' },
+  ],
   item: [
     folder('Health', 'Server status', [
       request('Health check', 'GET', '/', {
@@ -117,6 +141,16 @@ const collection = {
         },
       }),
       request('Get addresses by user', 'GET', '/api/addresses/{{userId}}'),
+      request('Forgot password (request reset link)', 'POST', '/api/users/forgot-password', {
+        body: { email: 'jane.doe@example.com' },
+        description:
+          'Generates a single-use reset token and emails a link. Always returns a generic success message (no account enumeration). With SMTP unconfigured, the link is logged to the server console — copy the token into the `resetToken` variable for the next request.',
+      }),
+      request('Reset password (with token)', 'POST', '/api/users/reset-password', {
+        body: { token: '{{resetToken}}', newPassword: 'newSecret123' },
+        description:
+          'Consumes the emailed token (single-use) and sets the new password. Minimum 8 characters.',
+      }),
     ]),
     folder('Product', 'Catalog: spaces, categories, sections, products', [
       folder('Spaces', null, [
@@ -308,6 +342,53 @@ const collection = {
         }),
         request('Delete cart item', 'DELETE', '/api/cart-items/1'),
       ]),
+    ]),
+    folder('Admin', 'Admin authentication, user management, and self-service', [
+      request('Admin login', 'POST', '/api/admin/login', {
+        body: { email: 'admin@example.com', password: 'admin123' },
+        description:
+          'Authenticates an admin and stores the returned JWT into the `adminToken` collection variable.',
+        testScript: [
+          'var json = pm.response.json();',
+          'if (json && json.data && json.data.token) {',
+          "  pm.collectionVariables.set('adminToken', json.data.token);",
+          '}',
+        ],
+      }),
+      request('List admins', 'GET', '/api/admins', {
+        auth: true,
+        json: false,
+        description: 'Lists all admin users. Requires any authenticated admin. Run `Admin login` first.',
+      }),
+      request('Create admin', 'POST', '/api/admins', {
+        auth: true,
+        body: {
+          name: 'New Admin',
+          email: 'new.admin@example.com',
+          password: 'admin12345',
+          role: 'admin',
+          is_active: true,
+        },
+        description:
+          'Creates a new admin. Requires superadmin role. Allowed roles: superadmin, admin.',
+      }),
+      request('Update admin', 'PUT', '/api/admins', {
+        auth: true,
+        body: {
+          id: 2,
+          name: 'Updated Admin',
+          role: 'admin',
+          is_active: true,
+        },
+        description:
+          'Updates an existing admin. Requires superadmin role. Password is optional.',
+      }),
+      request('Admin change password (old + new)', 'POST', '/api/admin/change-password', {
+        auth: true,
+        body: { oldPassword: 'admin123', newPassword: 'newAdmin123' },
+        description:
+          'Authenticated admin self-service password change. Verifies the current password, then sets a new one (min 8 chars, must differ from current). Run `Admin login` first to populate `adminToken`.',
+      }),
     ]),
   ],
 };
