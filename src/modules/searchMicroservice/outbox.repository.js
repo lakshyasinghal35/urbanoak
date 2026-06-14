@@ -1,5 +1,6 @@
 const { SearchOutboxModel } = require('../../models/mongoSchemas');
 const { isSearchEnabled } = require('../../config/elasticsearch');
+const { isMongoEnabled, assertMongoAvailable } = require('../../config/mongo');
 
 const SEARCH_EVENT_TYPES = {
   PRODUCT_UPSERT: 'product_upsert',
@@ -7,9 +8,11 @@ const SEARCH_EVENT_TYPES = {
 };
 
 async function enqueueProductEvent(eventType, productId) {
-  if (!isSearchEnabled() || !productId) {
+  if (!isSearchEnabled() || !productId || !isMongoEnabled()) {
     return null;
   }
+
+  assertMongoAvailable();
 
   return SearchOutboxModel.create({
     event_type: eventType,
@@ -21,6 +24,12 @@ async function enqueueProductEvent(eventType, productId) {
 }
 
 async function claimPendingEvents(batchSize) {
+  if (!isMongoEnabled()) {
+    return [];
+  }
+
+  assertMongoAvailable();
+
   const claimed = [];
 
   for (let i = 0; i < batchSize; i += 1) {
@@ -39,12 +48,16 @@ async function claimPendingEvents(batchSize) {
 }
 
 async function completeEvent(eventId) {
+  assertMongoAvailable();
+
   await SearchOutboxModel.findByIdAndUpdate(eventId, {
     $set: { status: 'completed', last_error: null },
   });
 }
 
 async function failEvent(eventId, errorMessage, attempts) {
+  assertMongoAvailable();
+
   const shouldRetry = attempts < 5;
   await SearchOutboxModel.findByIdAndUpdate(eventId, {
     $set: {

@@ -5,6 +5,7 @@ const Space = require('./model/space');
 const Section = require('./model/section');
 const queries = require('./query');
 const ApiError = require('../../common/apiError');
+const { assertMongoAvailable } = require('../../config/mongo');
 const { ProductModel, isDuplicateKeyError } = require('../../models/mongoSchemas');
 
 //--------------------------------category--------------------------------
@@ -187,6 +188,7 @@ async function getSectionsBySpaceId(space_id) {
 //--------------------------------product--------------------------------
 
 async function createProduct(product) {
+  assertMongoAvailable();
   try {
     const doc = await ProductModel.create(queries.productDocument(product));
     return new Product(queries.toProduct(doc));
@@ -199,6 +201,7 @@ async function createProduct(product) {
 }
 
 async function saveProduct(product) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(product.id)) {
     return null;
   }
@@ -224,6 +227,7 @@ async function saveProduct(product) {
 }
 
 async function deleteProduct(id) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(id)) {
     return false;
   }
@@ -233,6 +237,7 @@ async function deleteProduct(id) {
 }
 
 async function getProductById(id) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(id)) {
     return null;
   }
@@ -246,6 +251,7 @@ async function getProductById(id) {
 }
 
 async function getProductUnitsById(id) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(id)) {
     return null;
   }
@@ -264,6 +270,7 @@ async function getProductUnitsById(id) {
 }
 
 async function getProducts({ offset = 0, limit = 20 } = {}) {
+  assertMongoAvailable();
   const docs = await ProductModel.find()
     .skip(offset)
     .limit(limit);
@@ -272,6 +279,7 @@ async function getProducts({ offset = 0, limit = 20 } = {}) {
 }
 
 async function getProductsByCategoryIds(categoryIds) {
+  assertMongoAvailable();
   if (!categoryIds || categoryIds.length === 0) {
     return [];
   }
@@ -284,6 +292,7 @@ async function getProductsByCategoryIds(categoryIds) {
 }
 
 async function updateProductUnits(productId, units) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(productId)) {
     return null;
   }
@@ -302,6 +311,7 @@ async function updateProductUnits(productId, units) {
 }
 
 async function decrementProductUnitsIfAvailable(productId, quantity) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(productId)) {
     return null;
   }
@@ -323,6 +333,7 @@ async function decrementProductUnitsIfAvailable(productId, quantity) {
 }
 
 async function incrementProductUnits(productId, quantity) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(productId)) {
     return null;
   }

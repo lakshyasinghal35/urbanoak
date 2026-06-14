@@ -38,7 +38,7 @@ async function deleteProductDocument(indexName, productId) {
 
 async function searchProducts(indexName, { queryText, categoryIds, page, limit }) {
   if (!client) {
-    throw new ApiError('Search service is unavailable', 503);
+    throw ApiError.serviceUnavailable('Search service is unavailable');
   }
 
   const from = (page - 1) * limit;
@@ -86,7 +86,7 @@ async function searchProducts(indexName, { queryText, categoryIds, page, limit }
 
 async function suggestProducts(indexName, { queryText, limit }) {
   if (!client) {
-    throw new ApiError('Search service is unavailable', 503);
+    throw ApiError.serviceUnavailable('Search service is unavailable');
   }
 
   const result = await client.search({

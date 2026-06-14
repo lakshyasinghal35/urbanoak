@@ -2,6 +2,11 @@ jest.mock('../../../src/config/elasticsearch', () => ({
   isSearchEnabled: jest.fn(() => true),
 }));
 
+jest.mock('../../../src/config/mongo', () => ({
+  isMongoEnabled: jest.fn(() => true),
+  isMongoConnected: jest.fn(() => true),
+}));
+
 jest.mock('../../../src/modules/searchMicroservice/service', () => ({
   SEARCH_INDEX_NAME: 'urbanoak_products',
 }));
@@ -30,11 +35,14 @@ const outboxRepository = require('../../../src/modules/searchMicroservice/outbox
 const searchRepository = require('../../../src/modules/searchMicroservice/repository');
 const productRepository = require('../../../src/modules/productMicroservice/repository');
 const elasticsearchConfig = require('../../../src/config/elasticsearch');
+const mongoConfig = require('../../../src/config/mongo');
 
 describe('searchMicroservice/index.worker', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elasticsearchConfig.isSearchEnabled.mockReturnValue(true);
+    mongoConfig.isMongoEnabled.mockReturnValue(true);
+    mongoConfig.isMongoConnected.mockReturnValue(true);
   });
 
   it('upserts product for product_upsert events', async () => {
