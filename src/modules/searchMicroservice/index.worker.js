@@ -1,5 +1,6 @@
 const config = require('../../config');
 const { isSearchEnabled } = require('../../config/elasticsearch');
+const { isMongoEnabled, isMongoConnected } = require('../../config/mongo');
 const { SEARCH_INDEX_NAME } = require('./service');
 const searchRepository = require('./repository');
 const outboxRepository = require('./outbox.repository');
@@ -33,7 +34,7 @@ async function processEvent(event) {
 }
 
 async function processPendingEvents() {
-  if (isProcessing || !isSearchEnabled()) {
+  if (isProcessing || !isSearchEnabled() || !isMongoEnabled() || !isMongoConnected()) {
     return;
   }
 

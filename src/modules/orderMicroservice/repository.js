@@ -2,16 +2,19 @@ const { pool } = require('../../config/db');
 const { Order } = require('./model/order');
 const { Cart, CartItem } = require('./model/cart');
 const queries = require('./query');
+const { assertMongoAvailable } = require('../../config/mongo');
 const { OrderModel } = require('../../models/mongoSchemas');
 
 //--------------------------------order--------------------------------
 
 async function createOrder(order) {
+  assertMongoAvailable();
   const doc = await OrderModel.create(queries.orderDocument(order));
   return new Order(queries.toOrder(doc));
 }
 
 async function saveOrder(order) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(order.id)) {
     return null;
   }
@@ -30,6 +33,7 @@ async function saveOrder(order) {
 }
 
 async function deleteOrder(id) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(id)) {
     return false;
   }
@@ -39,6 +43,7 @@ async function deleteOrder(id) {
 }
 
 async function getOrderById(id) {
+  assertMongoAvailable();
   if (!queries.isValidObjectId(id)) {
     return null;
   }
@@ -52,6 +57,7 @@ async function getOrderById(id) {
 }
 
 async function getOrdersByUserId(user_id) {
+  assertMongoAvailable();
   const docs = await OrderModel.find(queries.ordersByUserIdFilter(user_id));
   if (!docs || docs.length === 0) {
     return null;

@@ -75,6 +75,7 @@ const config = {
   },
 
   mongoDB: {
+    enabled: bool(process.env.MONGO_ENABLED, fileMongo.enabled !== false),
     host: str(process.env.MONGO_HOST, fileMongo.host),
     port: num(process.env.MONGO_PORT, fileMongo.port ?? 27017),
     database_name: str(process.env.MONGO_DATABASE, fileMongo.database_name),
@@ -137,24 +138,30 @@ const config = {
 function validateConfig() {
   const errors = [];
 
-  if (!config.mySQL.host) errors.push('MYSQL_HOST is required');
-  if (!config.mySQL.database_name) errors.push('MYSQL_DATABASE is required');
-  if (!config.mySQL.user) errors.push('MYSQL_USER is required');
-  if (!config.mongoDB.host) errors.push('MONGO_HOST is required');
-  if (!config.mongoDB.database_name) errors.push('MONGO_DATABASE is required');
-  if (!config.jwt.secret) errors.push('JWT_SECRET is required');
-
   const isDeployed =
     config.appEnv === 'production'
     || config.appEnv === 'staging'
     || config.nodeEnv === 'production';
+
+  if (!config.mySQL.host) errors.push('MYSQL_HOST is required');
+  if (!config.mySQL.database_name) errors.push('MYSQL_DATABASE is required');
+  if (!config.mySQL.user) errors.push('MYSQL_USER is required');
+  if (config.mongoDB.enabled) {
+    if (!config.mongoDB.host) errors.push('MONGO_HOST is required');
+    if (!config.mongoDB.database_name) errors.push('MONGO_DATABASE is required');
+  } else if (isDeployed) {
+    errors.push('MONGO_ENABLED=false is not allowed in deployed environments');
+  }
+  if (!config.jwt.secret) errors.push('JWT_SECRET is required');
 
   if (isDeployed) {
     const insecureDefaults = [];
     if (config.jwt.secret === 'urbanoak-secret') insecureDefaults.push('JWT_SECRET');
     if (config.sessionSecret === 'secretkey') insecureDefaults.push('SESSION_SECRET');
     if (config.mySQL.password === 'root') insecureDefaults.push('MYSQL_PASSWORD');
-    if (config.mongoDB.password === 'root') insecureDefaults.push('MONGO_PASSWORD');
+    if (config.mongoDB.enabled && config.mongoDB.password === 'root') {
+      insecureDefaults.push('MONGO_PASSWORD');
+    }
 
     if (insecureDefaults.length) {
       errors.push(`deployed environments require secure env overrides for: ${insecureDefaults.join(', ')}`);
@@ -164,7 +171,7 @@ function validateConfig() {
       errors.push('MYSQL_HOST must not be localhost in deployed environments (set MYSQL_HOST)');
     }
 
-    if (isLocalHost(config.mongoDB.host)) {
+    if (config.mongoDB.enabled && isLocalHost(config.mongoDB.host)) {
       errors.push('MONGO_HOST must not be localhost in deployed environments (set MONGO_HOST)');
     }
 
